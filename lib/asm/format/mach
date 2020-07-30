@@ -1,0 +1,38 @@
+| Output format: ELF
+| vim: ft=reva :
+
+push~
+needs asm/common
+
+~asm
+~asmpriv
+
+variable exe-header-start
+variable pheader-start
+variable code-start
+variable data-start
+variable udata-start
+
+: mach-header
+	; 
+	
+
+: mach-exe-save ( a n -- )
+	; 
+: mach-code-start
+	;
+:: ; is (code-end)
+:: align ; is (data-start)
+:: ; is (data-end)
+:: align ; is (udata-start)
+:: ; is (udata-end)
+:: ; is (exe-set-entry)
+
+~asm
+: mach-format
+	['] mach-header is (exe-header)
+	['] mach-code-start is (code-start)
+	['] mach-exe-save is (exe-save)
+	;
+
+pop~

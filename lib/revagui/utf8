@@ -1,0 +1,42 @@
+| vim: ft=reva :
+
+push~
+needs gui
+
+~ 
+~revagui revagui drop
+
+|  Return the number of bytes needed to encode the given UCS4 character in UTF8.
+|  param [in] ucs UCS4 encoded character
+|  return number of bytes required
+1 func: utf8bytes	| unsigned ucs 
+|  returns the byte length of the first UTF-8 char sequence (returns -1 if not
+|  valid) 
+1 func: utf8len		| char c
+| OD: returns the number of Unicode chars in the UTF-8 string 
+2 func: utf_nb_char	| const unsigned char *buf, int len
+| Convert the next UTF8 char-sequence into a Unicode value (and say how many
+| bytes were used) 
+3 func: utf8decode | const char*p, const char*end, int*len
+| Encode a Unicode value into a UTF8 sequence, return the number of bytes used 
+2 func: utf8encode | unsigned ucs, char *buf
+| Move forward to the next valid UTF8 sequence start betwen start and end 
+3 func: utf8fwd	| const char*p, const char*start, const char *end
+| Move backward to the previous valid UTF8 sequence start 
+3 func: utf8back  | const char *p, const char *start, const char *end
+| Convert a UTF8 string into UTF16 
+4 func: utf8toutf16 | const char* src, unsigned srclen, unsigned short* dst, unsigned dstlen
+| Convert a UTF8 string into a wide character string - makes UTF16 on win32,
+| "UCS4" elsewhere 
+4 func: utf8towc |  const char *src, unsigned srclen, wchar_t *dst, unsigned dstlen
+
+| Convert a wide character string to UTF8 - takes in UTF16 on win32, "UCS4" elsewhere 
+4 func: utf8fromwc | char *dst, unsigned dstlen, const wchar_t *src, unsigned srclen
+| Convert a UTF8 string into ASCII, eliding untranslatable glyphs 
+4 func: utf8toa | const char *src, unsigned srclen, char *dst, unsigned dstlen
+| Convert 8859-1 string to UTF8 
+4 func: utf8froma | char *dst, unsigned dstlen, const char *src, unsigned srclen
+| Returns true if the current O/S locale is UTF8 
+0 func: utf8locale 
+pop~
+

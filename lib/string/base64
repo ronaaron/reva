@@ -1,0 +1,188 @@
+| vim: ft=reva :
+|
+| Base64 encoding/decoding as described in RFC 3458
+| http://www.faqs.org/rfcs/rfc3548.html
+
+push~
+~strings
+create b64chars " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" asciiz,
+create unb64chars 256  allot
+	unb64chars 256 $80 fill
+{{ 64 0do i dup b64chars + c@ unb64chars +  c!  loop }}
+
+| unb64chars 256 dump cr bye
+
+
+: b64char> ( n -- c ) 1+ b64chars + c@ ;
+
+76 value b64width
+| allocate sufficient memory to hold the 
+: b64allot ( n -- a n ) dup b64width / 2* swap 4 3  */ + 
+	4 /mod  swap if 1+ then 4 * 
+	dup allocate swap ;
+
+variable sofar
+create b64masks
+	%000000000000000000111111 ,
+	%000000000000111111000000 ,
+	%000000111111000000000000 ,
+	%111111000000000000000000 ,
+	
+: b64mask ( N pos -- N m )
+	dup 6 * >r
+	cells b64masks + @ over and	| N masked
+	r> >>
+	;
+: encode6 ( a N pos -- a' N' )
+	b64mask b64char>	| a N c
+	swap >r over c!  1+ sofar ++ r>
+
+	| output CRLF if necessary:
+	sofar @ b64width mod 0if
+		>r
+		13 over c!  1+ 
+		10 over c!  1+
+		r>
+	then
+	;
+
+
+variable b64
+variable b64cnt
+: b64init ( a n -- a n b m )
+	dup b64allot 2dup '= fill
+	sofar off						| a n b m
+	b64 off
+	b64cnt off
+	;
+
+	
+: >b64 ( c -- )
+	b64 @ 8 << or b64 !		| accumulate
+	b64cnt ++
+	b64cnt @ 3 mod 0if
+		| we have three characters accumulated; process them
+		swap
+		0 b64 xchg
+		4 0do remains encode6 loop
+		drop
+		swap
+	then
+	;
+
+: b64end1
+	b64 @ 16 <<
+	3 encode6
+	2 encode6
+	2drop
+	;
+: b64end2
+	b64 @ 8 <<
+	3 encode6
+	2 encode6
+	1 encode6
+	2drop
+	;
+
+create b64endings
+	' drop ,
+	' b64end1 ,
+	' b64end2 ,
+
+: b64end ( a n b x -- a n )
+	b64cnt @ 3 mod cells
+	b64endings + @execute
+	;
+: >base64 ( a n -- b m )
+	00;
+	b64init
+	over >r
+	2swap							| b m a n
+	r> -rot
+	0do count >b64 loop
+	drop | input-string
+	b64end
+	;
+
+defer: base64-invalid cr ." invalid base64 input!" cr ;
+variable valid
+2variable result
+: base64> ( a n -- b m )
+	0;
+	dup 3 4 */ dup allocate dup sofar !			| initialize decoding, allocate string
+	2dup swap result 2!
+	.s cr
+	swap
+	| a n b m
+	2swap			| b m a n
+	repeat
+." repeat: " .s cr
+		b64 off
+		cell- | n a
+		valid off
+		4 0do
+			swap
+			count		| n a' c
+			dup '= =if
+				drop
+			else
+				unb64chars + c@ 1-
+				dup $80 =if base64-invalid 2drop 3drop unloop ;then
+				| n a' c
+				b64 @ 6 << or b64 !
+				valid ++
+			then
+			swap
+		loop
+		| a' n'
+."    outer: " 	.s cr
+." valid: "	valid ? cr
+		valid @ 1- 0do
+			remains b64 + c@ 
+			." out-process: " .s cr
+			sofar c!
+			sofar ++
+		loop
+
+		| check for cr lf
+		swap
+		dup c@ dup 10 = swap 13 = or if
+			repeat
+				1+
+				-1 _+
+				dup c@ dup 10 = swap 13 = or 
+			while
+		then
+		swap dup
+	while
+	| b m a 0
+	2drop | b m
+	drop
+	sofar @ over swap -
+	.s cr
+|	drop sofar @ - 
+	result 2@ .s cr
+." done: "	.s cr
+	;
+pop~
+|||
+
+def: >base64 
+ctx: ~strings
+stack:  a n -- a n
+ver: 9.0.9
+desc: =
+	Encode the string passed-in, into a BASE64 (RFC 3458) encoded string, whose
+	memory is allocated.
+=
+
+def: base64>
+ctx: ~strings
+stack:  a n -- a n
+ver: 9.0.9
+desc: =
+	Decode the BASE64 (RFC 3458) encoded string, into a plain-text string whose
+	memory is allocated.
+=
+
+related: base64> >base64

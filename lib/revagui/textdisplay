@@ -1,0 +1,14 @@
+| vim: ft=reva :
+
+push~
+needs revagui/common
+
+~ ~revagui revagui drop
+
+5 func: text_display	| x,y,w,h,t -- returns tb handle
+2 vfunc: td_setbuffer	| td,b --
+1 func: td_getbuffer	| td -- b
+3 vfunc: td_scroll		| td,top,hoff --
+2 vfunc: td_show_cursor	| td,f --
+
+pop~

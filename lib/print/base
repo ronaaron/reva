@@ -1,0 +1,37 @@
+| vim: ft=reva :
+| common printing functionality
+
+push~
+~ context: ~print
+~print
+
+defer: printer-default 0 0 ;
+defer: printer-select 2drop 0 ;
+defer: printer-enum drop ;
+defer: printer-close drop ;
+
+pop~
+
+|||
+
+def: printer-select
+stack: a n -- h
+ctx: ~print
+ver: 2011.1
+desc: *
+	Request a printer by name.  If the printer name is null, then give the
+	user a selection of printers to use.
+
+	Returns a handle to the printer.
+*
+
+def: printer-default
+stack: -- a n
+ctx: ~print
+ver: 2011.1
+desc: *
+	Return the name of the default printer, suitable to give to
+	"printer-select"
+*
+
+related: printer-select printer-default

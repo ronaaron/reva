@@ -1,0 +1,101 @@
+| timing utility words
+| vim: ft=reva ts=4
+
+push~
+~priv
+8 constant MAX_TIMER
+create timers   MAX_TIMER cells allot
+
+: timer-valid ( n -- n | return )
+	dup 0 MAX_TIMER 1- between 0if
+		drop rdrop
+	then
+	;
+: .00 2 '0 (p.r) here ;
+: +: ': here c+place ;
+variable timer-oneshot
+~ ~util
+
+: >timer ( n -- )
+	timer-valid
+	cells timers + ms@ swap !
+	;
+
+: timer> ( n -- m )
+	timer-valid
+	cells timers + 
+: (timer>)
+	ms@ swap @ -
+	dup 0 <if negate then
+	;
+
+: timer-xt ( xt -- m )
+	ms@ timer-oneshot !
+	execute
+	timer-oneshot (timer>)
+	;
+
+: (.timer) ( m -- a n )
+	base @ >r decimal
+	1000 /mod		| msec sec
+	60 /mod			| msec sec mm
+	60 /mod			| msec sec mm hh
+	.00  place +:
+	.00 +place +:
+	.00 +place '.  here c+place
+	3 '0 (p.r) here +place
+	here count
+	r> base ! 
+	;
+
+: .timer (.timer) type ;
+
+pop~
+
+|||
+def: >timer
+ctx: ~util
+stack: n -- 
+ver: 9.0.11
+desc: =
+	Sets (or resets) timer number 'n'.  This is an 'elapsed time' timer.  Use
+	"timer>" to get the elapsed millisecond count.
+
+	Note that if 'n' is not between 0 and 7, the word will silently fail.
+=
+
+def: timer>
+ctx: ~util
+stack: n -- m
+ver: 9.0.11
+desc: =
+	Gets the current elapsed number of milliseconds since timer 'n' was started.  
+=
+
+def: timer-xt
+ctx: ~util
+stack: xt -- m
+ver: 9.0.11
+desc: =
+	Executes 'xt' and times how long it took.  Returns the elapsed number of
+	milliseconds.  
+=
+
+def: .timer
+ctx: ~util
+stack: n -- 
+ver: 9.0.11
+desc: =
+	Prints the value 'n' as elapsed milliseconds, in the format "HH:MM:SS.MMM"
+=
+
+def: (.timer)
+ctx: ~util
+stack: n -- a n
+ver: 9.0.11
+desc: =
+	Prints the value 'n' to a string, as elapsed milliseconds, in the format
+	"HH:MM:SS.MMM"
+=
+
+related: >timer timer> ms@ .timer (.timer)

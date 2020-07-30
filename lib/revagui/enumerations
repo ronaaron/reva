@@ -1,0 +1,433 @@
+| vim: ft=reva :
+
+push~
+needs revagui/common
+
+~ ~revagui revagui drop
+
+| Event types:
+0 constant FL_NO_EVENT
+|  A mouse button has gone down with the mouse pointing at this
+|  widget. You can find out what button by calling Fl::event_button(). 
+|  You find out the mouse position by calling Fl::event_x() and
+|  Fl::event_y().
+|
+|  A widget indicates that it "wants" the mouse click by returning non-zero 
+|  from its Fl_Widget::handle() method. It will then become the 
+|  Fl::pushed() widget and will get FL_DRAG and the matching FL_RELEASE events.  
+|  If Fl_Widget::handle() returns zero then FLTK will try sending the FL_PUSH 
+|  to another widget. 
+1 constant FL_PUSH
+|  A mouse button has been released. You can find out what button by 
+|  calling Fl::event_button().
+|
+|  In order to receive the FL_RELEASE event, the widget must return 
+|  non-zero when handling FL_PUSH.
+2 constant  FL_RELEASE
+
+|  The mouse has been moved to point at this widget.  This can
+|  be used for highlighting feedback.  If a widget wants to
+|  highlight or otherwise track the mouse, it indicates this by
+|  returning non-zero from its handle() method. It then
+|  becomes the Fl::belowmouse() widget and will receive 
+|  FL_MOVE and FL_LEAVE events.
+3 constant FL_ENTER
+
+|  The mouse has moved out of the widget.
+|  In order to receive the FL_LEAVE event, the widget must 
+|  return non-zero when handling FL_ENTER.
+4 constant  FL_LEAVE
+
+| The mouse has moved with a button held down. The current button state 
+|  is in Fl::event_state(). The mouse position is in Fl::event_x() and 
+|  Fl::event_y().
+|
+|  In order to receive FL_DRAG events, the widget must return non-zero 
+|  when handling FL_PUSH.
+5 constant FL_DRAG
+
+| This indicates an <I>attempt</I> to give a widget the keyboard focus.
+|
+|  If a widget wants the focus, it should change itself to display the 
+|  fact that it has the focus, and return non-zero from its handle() method.
+|  It then becomes the Fl::focus() widget and gets FL_KEYDOWN, FL_KEYUP, 
+|  and FL_UNFOCUS events.
+|
+|  The focus will change either because the window manager changed which 
+|  window gets the focus, or because the user tried to navigate using tab, 
+|  arrows, or other keys. You can check Fl::event_key() to figure out why 
+|  it moved. For navigation it will be the key pressed and interaction 
+|  with the window manager it will be zero.
+6 constant FL_FOCUS	
+
+| This event is sent to the previous Fl::focus() widget when another 
+|  widget gets the focus or the window loses focus.
+7 constant FL_UNFOCUS
+
+|  A key was pressed or released. The key can be found in Fl::event_key().
+|  The text that the key should insert can be found with Fl::event_text() 
+|  and its length is in Fl::event_length(). If you use the key handle()
+|  should return 1. If you return zero then FLTK assumes you ignored the 
+|  key and will then attempt to send it to a parent widget. If none of 
+|  them want it, it will change the event into a FL_SHORTCUT event.
+|
+|  To receive FL_KEYBOARD events you must also respond to the FL_FOCUS
+|  and FL_UNFOCUS events.
+|
+|  If you are writing a text-editing widget you may also want to call 
+|  the Fl::compose() function to translate individual keystrokes into 
+|  foreign characters.
+|
+|  FL_KEYUP events are sent to the widget that currently has focus. This 
+|  is not necessarily the same widget that received the corresponding 
+|  FL_KEYDOWN event because focus may have changed between events.
+
+8 constant FL_KEYDOWN
+
+| /** Key release event.
+| *  \see FL_KEYDOWN
+| */
+9 constant FL_KEYUP
+
+
+| /** The user clicked the close button of a window.
+| *  This event is used internally only to trigger the callback of
+| *  Fl_Window derived classed. The default callback closes the 
+| *  window calling Fl_Window::hide().
+| */
+10 constant FL_CLOSE
+
+| /** The mouse has moved without any mouse buttons held down. 
+| *  This event is sent to the Fl::belowmouse() widget.
+| *
+| *  In order to receive FL_MOVE events, the widget must return 
+| *  non-zero when handling FL_ENTER.
+| */
+11 constant FL_MOVE
+
+| /** If the Fl::focus() widget is zero or ignores an FL_KEYBOARD
+| *  event then FLTK tries sending this event to every widget it 
+| *  can, until one of them returns non-zero. FL_SHORTCUT is first 
+| *  sent to the Fl::belowmouse() widget, then its parents and siblings, 
+| *  and eventually to every widget in the window, trying to find an 
+| *  object that returns non-zero. FLTK tries really hard to not to ignore 
+| *  any keystrokes!
+| *
+| *  You can also make "global" shortcuts by using Fl::add_handler(). A 
+| *  global shortcut will work no matter what windows are displayed or 
+| *  which one has the focus.
+| */
+12 constant FL_SHORTCUT
+
+| /** This widget is no longer active, due to Fl_Widget::deactivate() 
+| *  being called on it or one of its parents. Fl_Widget::active() may 
+| *  still be true after this, the widget is only active if Fl_Widget::active()
+| *  is true on it and all its parents (use Fl_Widget::active_r() to check this).
+| */
+13 constant FL_DEACTIVATE
+
+| /** This widget is now active, due to Fl_Widget::activate() being 
+| *  called on it or one of its parents.
+| */
+14 constant FL_ACTIVATE
+
+
+| /** This widget is no longer visible, due to Fl_Widget::hide() being 
+| *  called on it or one of its parents, or due to a parent window being 
+| *  minimized.  Fl_Widget::visible() may still be true after this, but the 
+| *  widget is visible only if visible() is true for it and all its 
+| *  parents (use Fl_Widget::visible_r() to check this).
+| */
+15 constant FL_HIDE
+
+| /** This widget is visible again, due to Fl_Widget::show() being called on 
+| *  it or one of its parents, or due to a parent window being restored. 
+| *  Child Fl_Windows respond to this by actually creating the window if not 
+| *  done already, so if you subclass a window, be sure to pass FL_SHOW 
+| *  to the base class Fl_Widget::handle() method!
+| */
+16 constant FL_SHOW
+
+| /** You should get this event some time after you call Fl::paste(). 
+| *  The contents of Fl::event_text() is the text to insert and the number 
+| *  of characters is in Fl::event_length().
+| */
+17 constant FL_PASTE
+
+| /** The Fl::selection_owner() will get this event before the selection is 
+| *  moved to another widget. This indicates that some other widget or program 
+| *  has claimed the selection. Motif programs used this to clear the selection 
+| *  indication. Most modern programs ignore this.
+| */
+18 constant FL_SELECTIONCLEAR
+
+| /** The user has moved the mouse wheel. The Fl::event_dx() and Fl::event_dy()
+| *  methods can be used to find the amount to scroll horizontally and vertically.
+| */
+19 constant FL_MOUSEWHEEL
+
+| /** The mouse has been moved to point at this widget. A widget that is 
+| *  interested in receiving drag'n'drop data must return 1 to receive 
+| *  FL_DND_DRAG, FL_DND_LEAVE and FL_DND_RELEASE events.
+| */
+20 constant FL_DND_ENTER
+
+| /** The mouse has been moved inside a widget while dragging data.  A 
+| *  widget that is interested in receiving drag'n'drop data should 
+| *  indicate the possible drop position.
+| */
+21 constant FL_DND_DRAG
+
+| /** The mouse has moved out of the widget.
+| */
+22 constant FL_DND_LEAVE
+
+| /** The user has released the mouse button dropping data into the widget. 
+| *  If the widget returns 1, it will receive the data in the immediately 
+| *  following FL_PASTE event.
+| */
+23 constant FL_DND_RELEASE
+
+| These constants determine when a callback is performed.
+
+0 constant FL_WHEN_NEVER | ,	///< Never call the callback
+1 constant FL_WHEN_CHANGED | ,	///< Do the callback only when the widget value changes
+2 constant FL_WHEN_NOT_CHANGED | ,	///< Do the callback whenever the user interacts with the widget
+4 constant FL_WHEN_RELEASE | ,	///< Do the callback when the button or key is released and the value changes
+6 constant FL_WHEN_RELEASE_ALWAYS= | ,	///< Do the callback when the button or key is released, even if the value doesn't change
+8 constant FL_WHEN_ENTER_KEY | ,	///< Do the callback when the user presses the ENTER key and the value changes
+10 constant FL_WHEN_ENTER_KEY_ALWAYS | ,	///< Do the callback when the user presses the ENTER key, even if the value doesn't change
+11 constant FL_WHEN_ENTER_KEY_CHANGED | 	///< ?
+
+| This and the following constants define the non-ASCII keys on the
+| keyboard for FL_KEYBOARD and FL_SHORTCUT events.
+
+$fee8 constant FL_Button | ///< A mouse button; use Fl_Button + n for mouse button n.
+$ff08 constant FL_BackSpace | ///< The backspace key.
+$ff09 constant FL_Tab | ///< The tab key.
+$ff0d constant FL_Enter | ///< The enter key. 
+$ff13 constant FL_Pause | ///< The pause key.
+$ff14 constant FL_Scroll_Lock | ///< The scroll lock key.
+$ff1b constant FL_Escape | ///< The escape key.
+$ff50 constant FL_Home | ///< The home key.
+$ff51 constant FL_Left | ///< The left arrow key.
+$ff52 constant FL_Up | ///< The up arrow key.
+$ff53 constant FL_Right | ///< The right arrow key.
+$ff54 constant FL_Down | ///< The down arrow key.
+$ff55 constant FL_Page_Up | ///< The page-up key.
+$ff56 constant FL_Page_Down | ///< The page-down key.
+$ff57 constant FL_End | ///< The end key.
+$ff61 constant FL_Print | ///< The print (or print-screen) key.
+$ff63 constant FL_Insert | ///< The insert key. 
+$ff67 constant FL_Menu | ///< The menu key.
+$ff68 constant FL_Help | ///< The 'help' key on Mac keyboards
+$ff7f constant FL_Num_Lock | ///< The num lock key.
+$ff80 constant FL_KP | ///< One of the keypad numbers; use FL_KP + n for number n.
+$ff8d constant FL_KP_Enter | ///< The enter key on the keypad, same as Fl_KP+'\\r'.
+$ffbd constant FL_KP_Last | ///< The last keypad key; use to range-check keypad.
+$ffbd constant FL_F | ///< One of the function keys; use FL_F + n for function key n.
+$ffe0 constant FL_F_Last | ///< The last function key; use to range-check function keys.
+$ffe1 constant FL_Shift_L | ///< The lefthand shift key.
+$ffe2 constant FL_Shift_R | ///< The righthand shift key.
+$ffe3 constant FL_Control_L | ///< The lefthand control key.
+$ffe4 constant FL_Control_R | ///< The righthand control key.
+$ffe5 constant FL_Caps_Lock | ///< The caps lock key.
+$ffe7 constant FL_Meta_L | ///< The left meta/Windows key.
+$ffe8 constant FL_Meta_R | ///< The right meta/Windows key.
+$ffe9 constant FL_Alt_L | ///< The left alt key.
+$ffea constant FL_Alt_R | ///< The right alt key. 
+$ffff constant FL_Delete | ///< The delete key.
+
+| Mouse Buttons
+1 constant FL_LEFT_MOUSE | ///< The left mouse button
+2 constant FL_MIDDLE_MOUSE | ///< The middle mouse button
+3 constant FL_RIGHT_MOUSE | ///< The right mouse button
+
+| 	Event States
+
+$00010000 constant FL_SHIFT | ///< One of the shift keys is down
+$00020000 constant FL_CAPS_LOCK | ///< The caps lock is on
+$00040000 constant FL_CTRL | ///< One of the ctrl keys is down
+$00080000 constant FL_ALT | ///< One of the alt keys is down
+$00100000 constant FL_NUM_LOCK | ///< The num lock is on // most X servers do this?
+$00400000 constant FL_META | ///< One of the meta/Windows keys is down // correct for XFree86
+$00800000 constant FL_SCROLL_LOCK | ///< The scroll lock is on // correct for XFree86
+$01000000 constant FL_BUTTON1 | ///< Mouse button 1 is pushed
+$02000000 constant FL_BUTTON2 | ///< Mouse button 2 is pushed
+$04000000 constant FL_BUTTON3 | ///< Mouse button 3 is pushed
+$7f000000 constant FL_BUTTONS | ///< Any mouse button is pushed
+
+MAC [IF]
+FL_META constant FL_COMMAND
+[ELSE]
+FL_CTRL constant FL_COMMAND
+[THEN]
+
+| label types
+  0 constant FL_NORMAL_LABEL  | 	///< draws the text (0)
+  1 constant FL_NO_LABEL  | 			///< does nothing
+  2 constant _FL_SHADOW_LABEL  | 		///< draws a drop shadow under the text
+  3 constant _FL_ENGRAVED_LABEL  | 		///< draws edges as though the text is engraved
+  4 constant _FL_EMBOSSED_LABEL  | 		///< draws edges as thought the text is raised
+  5 constant _FL_MULTI_LABEL  | 		///< ?
+  6 constant _FL_ICON_LABEL  | 		///< draws the icon associated with the text
+  7 constant _FL_IMAGE_LABEL  | 		///< ?
+  8 constant FL_FREE_LABELTYPE  | 		///< first free labeltype to use for creating own labeltypes
+
+| Flags to control the label alignment. 
+| This controls how the label is displayed next to or inside the widget. 
+| The default value is FL_ALIGN_CENTER for most widgets, which centers the label
+| inside the widget.
+|
+| Flags can be or'd to achieve a combination of alignments.
+
+  | * Align the label horizontally in the middle. */
+ 0 constant FL_ALIGN_CENTER		|  (Fl_Align)0;
+  | ** Align the label at the top of the widget. Inside labels appear below the top,
+  | *  outside labels are drawn on top of the widget. */
+ 1 constant FL_ALIGN_TOP		|  (Fl_Align)1;
+  | /** Align the label at the bottom of the widget. */
+ 2 constant FL_ALIGN_BOTTOM		|  (Fl_Align)2;
+  | ** Align the label at the left of the widget. Inside labels appear left-justified
+  | *  starting at the left side of the widget, outside labels are right-justified and
+  | *  drawn to the left of the widget. */
+ 4 constant FL_ALIGN_LEFT		|  (Fl_Align)4;
+  | /** Align the label to the right of the widget. */
+ 8 constant FL_ALIGN_RIGHT		|  (Fl_Align)8;
+  | /** Draw the label inside of the widget. */
+ 16 constant FL_ALIGN_INSIDE		|  (Fl_Align)16;
+  | /** If the label contains an image, draw the text on top of the image. */
+ 32 constant FL_ALIGN_TEXT_OVER_IMAGE	|  (Fl_Align)32;
+  | /** If the label contains an image, draw the text below the image. */
+ 0 constant FL_ALIGN_IMAGE_OVER_TEXT	|  (Fl_Align)0;
+  | /** All parts of the label that are lager than the widget will not be drawn . */
+ 64 constant FL_ALIGN_CLIP		|  (Fl_Align)64;
+  | /** Wrap text that does not fit the width of the widget. */
+ 128 constant FL_ALIGN_WRAP		|  (Fl_Align)128;
+ FL_ALIGN_TOP FL_ALIGN_LEFT or constant FL_ALIGN_TOP_LEFT	|  FL_ALIGN_TOP | FL_ALIGN_LEFT;
+ FL_ALIGN_TOP  FL_ALIGN_RIGHT or constant FL_ALIGN_TOP_RIGHT	
+ FL_ALIGN_BOTTOM  FL_ALIGN_LEFT or constant FL_ALIGN_BOTTOM_LEFT	
+ FL_ALIGN_BOTTOM  FL_ALIGN_RIGHT or constant FL_ALIGN_BOTTOM_RIGHT	
+
+| font numbers
+
+ 0 constant FL_HELVETICA  | 	///< Helvetica (or Arial) normal (0)
+ 1 constant FL_HELVETICA_BOLD  | 	///< Helvetica (or Arial) bold
+ 2 constant FL_HELVETICA_ITALIC  | 	///< Helvetica (or Arial) oblique
+ 3 constant FL_HELVETICA_BOLD_ITALIC  | 	///< Helvetica (or Arial) bold-oblique
+ 4 constant FL_COURIER  | 	///< Courier normal
+ 5 constant FL_COURIER_BOLD  | 	///< Courier bold 
+ 6 constant FL_COURIER_ITALIC  | 	///< Courier italic
+ 7 constant FL_COURIER_BOLD_ITALIC  | 	///< Courier bold-italic
+ 8 constant FL_TIMES  | 	///< Times roman
+ 9 constant FL_TIMES_BOLD  | 	///< Times roman bold
+ 10 constant FL_TIMES_ITALIC  | 	///< Times roman italic
+ 11 constant FL_TIMES_BOLD_ITALIC  | 	///< Times roman bold-italic
+ 12 constant FL_SYMBOL  | 	///< Standard symbol font
+ 13 constant FL_SCREEN  | 	///< Default monospaced screen font
+ 14 constant FL_SCREEN_BOLD  | 	///< Default monospaced bold screen font
+ 15 constant FL_ZAPF_DINGBATS  | 	///< Zapf-dingbats font
+
+ 16 constant FL_FREE_FONT  | 	///< first one to allocate
+ 1 constant FL_BOLD  | 	///< add this to helvetica, courier, or times
+ 2 constant FL_ITALIC  | 	///< add this to helvetica, courier, or times
+ 3 constant FL_BOLD_ITALIC  | 	///< add this to helvetica, courier, or times
+
+data: FL_NORMAL_SIZE
+
+| standard colors
+  | // These are used as default colors in widgets and altered as necessary
+  0 constant FL_FOREGROUND_COLOR  | 	///< the default foreground color (0) used for labels and text
+  7 constant FL_BACKGROUND2_COLOR  | 	///< the default background color for text, list, and valuator widgets
+  8 constant FL_INACTIVE_COLOR  | 	///< the inactive foreground color
+  15 constant FL_SELECTION_COLOR  | 	///< the default selection/highlight color
+
+  | // boxtypes generally limit themselves to these colors so
+  | // the whole ramp is not allocated:
+
+  32 constant FL_GRAY0  | 	// 'A'
+  39 constant FL_DARK3  | 	// 'H'
+  45 constant FL_DARK2  |    // 'N'
+  47 constant FL_DARK1  | 	// 'P'
+  49 constant FL_BACKGROUND_COLOR  | 	// 'R' default background color
+  50 constant FL_LIGHT1  | 	// 'S'
+  52 constant FL_LIGHT2  | 	// 'U'
+  54 constant FL_LIGHT3  | 	// 'W'
+
+  | // FLTK provides a 5x8x5 color cube that is used with colormap visuals
+
+  56 constant FL_BLACK  | 
+  88 constant FL_RED  | 
+  63 constant FL_GREEN  | 
+  95 constant FL_YELLOW  | 
+  216 constant FL_BLUE  | 
+  248 constant FL_MAGENTA  | 
+  223 constant FL_CYAN  | 
+  72 constant FL_DARK_RED  | 
+
+  60 constant FL_DARK_GREEN  | 
+  76 constant FL_DARK_YELLOW  | 
+  136 constant FL_DARK_BLUE  | 
+  152 constant FL_DARK_MAGENTA  | 
+  140 constant FL_DARK_CYAN  | 
+
+  255 constant FL_WHITE  
+
+| cursors
+  0 constant FL_CURSOR_DEFAULT  | 
+  35 constant FL_CURSOR_ARROW  | 
+  66 constant FL_CURSOR_CROSS  | 
+  76 constant FL_CURSOR_WAIT  | 
+  77 constant FL_CURSOR_INSERT  | 
+  31 constant FL_CURSOR_HAND  | 
+  47 constant FL_CURSOR_HELP  | 
+  27 constant FL_CURSOR_MOVE  | 
+  |  fltk provides bitmaps for these:
+  78 constant FL_CURSOR_NS  | 
+  79 constant FL_CURSOR_WE  | 
+  80 constant FL_CURSOR_NWSE  | 
+  81 constant FL_CURSOR_NESW  | 
+  255 constant FL_CURSOR_NONE  | 
+  |  for back compatability (non MSWindows ones):
+  70 constant FL_CURSOR_N  | 
+  69 constant FL_CURSOR_NE  | 
+  49 constant FL_CURSOR_E  | 
+  8 constant FL_CURSOR_SE  | 
+  9 constant FL_CURSOR_S  | 
+  7 constant FL_CURSOR_SW  | 
+  36 constant FL_CURSOR_W  | 
+  68 constant FL_CURSOR_NW  | 
+
+| values for "when" passed to Fl::add_fd()
+  1 constant FL_READ  | 
+  4 constant FL_WRITE  | 
+  8 constant FL_EXCEPT  | 
+
+| visual types and mode (match GLUT)
+  0 constant FL_RGB | 
+  1 constant FL_INDEX | 
+  0 constant FL_SINGLE | 
+  2 constant FL_DOUBLE | 
+  4 constant FL_ACCUM | 
+  8 constant FL_ALPHA | 
+  16 constant FL_DEPTH | 
+  32 constant FL_STENCIL | 
+  64 constant FL_RGB8 | 
+  128 constant FL_MULTISAMPLE | 
+  256 constant FL_STEREO | 
+  512 constant FL_FAKE_SINGLE | 	// Fake single buffered windows using double-buffer
+
+|  image alpha blending
+  $40000000 constant FL_IMAGE_WITH_ALPHA
+
+| damage masks
+  $01 constant FL_DAMAGE_CHILD | 
+  $02 constant FL_DAMAGE_EXPOSE | 
+  $04 constant FL_DAMAGE_SCROLL | 
+  $08 constant FL_DAMAGE_OVERLAY | 
+  $10 constant FL_DAMAGE_USER1 | 
+  $20 constant FL_DAMAGE_USER2 | 
+  $80 constant FL_DAMAGE_ALL
+
+pop~
+

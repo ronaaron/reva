@@ -1,0 +1,109 @@
+| Output format: ELF
+| vim: ft=reva :
+
+push~
+needs asm/common
+
+~asm
+~asmpriv
+
+variable exe-header-start
+variable pheader-start
+variable code-start
+variable data-start
+variable udata-start
+
+: elf-magic ( a -- )
+	$464c457f over !
+	cell+ 
+	$00010101 swap !
+	;
+
+: fix-file-size ( n -- n )
+	dup . ." file-size" cr
+	dup
+	pheader-start @ 16 + 
+	2dup !
+	cell+ !
+	;
+2variable interpname-size
+52 constant ELF_HEADER_SIZE
+8 cells constant PHEADER_SIZE
+: elf-header
+	$08048000 org
+	align
+	here dup exe-header-start !
+	ELF_HEADER_SIZE allot
+	| initialize header to all zeroes
+	ELF_HEADER_SIZE zero
+	| set the ELF magic
+	exe-header-start @ elf-magic
+	| set machine  type and architecture:
+	$00030002					exe-header-start @ 16 + !
+	| set version
+	1							exe-header-start @ 20 + !
+	| offset to pheader:
+|	ELF_HEADER_SIZE 			exe-header-start @ 28 + !
+	| header size
+	$200034   					exe-header-start @ 40 + !
+	1							exe-header-start @ 44 + c!
+
+	| interpreter
+	align 
+	here  " /lib/lib-linux.so.2" here, here - interpname-size 2!
+	align
+
+	| pheader:
+	here exe-header-start @ -	exe-header-start @ 28 + !
+
+	here dup pheader-start !	PHEADER_SIZE allot
+		PHEADER_SIZE zero
+		
+	| header type
+	1							pheader-start @ !
+	0 +org			pheader-start @ 8 + !
+	0 +org			pheader-start @ 12 + !
+	| p_flags
+	5				pheader-start @ 6 cells + !
+	| align
+	$1000			pheader-start @ 7 cells + !
+	; 
+	
+
+: elf-exe-save ( a n -- )
+	(data-end)
+	(udata-end)
+	(code-end)
+
+	2dup
+	creat >r
+	exe-header-start @ here over - 
+	fix-file-size
+	r@ write
+	r> close
+	zt makeexe
+	; 
+: elf-code-start
+	align
+	code-start @ 0if
+		| save this offset as the start location
+		here  exe-header-start @ - +org dup code-start !
+		code-start @ .x ." code start" cr
+		exe-header-start @ 24 + !
+	then
+	;
+:: ; is (code-end)
+:: align ; is (data-start)
+:: ; is (data-end)
+:: align ; is (udata-start)
+:: ; is (udata-end)
+:: ; is (exe-set-entry)
+
+~asm
+: elf-format
+	['] elf-header is (exe-header)
+	['] elf-code-start is (code-start)
+	['] elf-exe-save is (exe-save)
+	;
+
+pop~

@@ -1,0 +1,111 @@
+| vim: ft=reva :
+| This creates a GUI "console" window, and redirects the emit etc words to use
+| it.
+
+push~
+
+needs ui/gui
+
+| make sure we can access the words we need:
+~ 
+~io
+~ui
+
+
+variable the-gui-console
+variable the-gui-console-out
+variable the-gui-console-in
+
+variable console-redirected
+
+variable old-emit
+variable old-type
+variable old-key
+
+: gui-console-type ( a n -- )
+	the-gui-console-out @ -rot attr: INSERT
+	;
+variable g-c-emit-pad
+: gui-console-emit ( c -- )
+	g-c-emit-pad c!
+	g-c-emit-pad 1 the-gui-console-out @ -rot attr: INSERT
+	;
+: gui-console-key
+	;
+
+: gui-console-redirect ( flag -- )
+	if 
+		| redirect: get current state of vectors:
+		['] emit @ old-emit !
+		['] type @ old-type !
+|		['] key @ old-key !
+		['] gui-console-emit is emit
+		['] gui-console-type is type
+|		['] gui-console-key is key
+		console-redirected on
+	else
+		| restore old vectors
+		old-emit @ is emit
+		old-type @ is type
+|		old-key @ is key
+		console-redirected off
+	then
+	;
+
+2variable thevalue
+: gui-console-input
+	callback
+	1 cb-param 13 =if 
+		| get the data and evaluate:
+		the-gui-console-in @ getval thevalue 2!  " " setval
+		cr thevalue 2@ type cr
+		thevalue 2@ eval
+	then
+	gui-default
+	;
+: gui-console ( flag -- ) | flag is true or false, to show or not
+	if 
+		| if there is no console created, make it now:
+		the-gui-console @ 0if
+			dialog[
+				vbox[
+					editbox[ 
+						" YES" attr: READONLY
+						" YES" attr: MULTILINE
+						expand
+						dup the-gui-console-out ! ]w
+					spacer
+					editbox[ 
+						expand-horizontal
+						dup the-gui-console-in !
+						['] gui-console-input key-any-cb
+						]w
+				]w 
+			]dw
+				" HALFxHALF" attr: SIZE
+			show
+			the-gui-console !
+		then
+		true gui-console-redirect 
+		the-gui-console @ " YES" 
+	else
+		false gui-console-redirect
+		| hide console
+		the-gui-console @ " NO" 
+	then
+	attr: VISIBLE
+	." GUI Console" cr
+	;
+
+: gui-console-close
+	false gui-console-redirect
+
+	0 the-gui-console xchg dup if
+		the-gui-console-out off
+		the-gui-console-in off
+		dup destroy
+	then
+	drop
+	;
+
+pop~

@@ -1,0 +1,22 @@
+| vim: ft=reva :
+
+push~
+needs revagui/common
+
+~ ~revagui revagui drop
+
+0 func: text_buffer		| returns tb handle
+1 func: tb_length		| tb -- length
+2 vfunc: tb_settext		| tb,z --
+1 func: tb_gettext		| tb -- z
+2 vfunc: tb_append		| tb,z --
+3 vfunc: tb_insert		| tb,pos,z --
+3 vfunc: tb_remove		| tb,start,end --
+4 vfunc: tb_replace		| tb,start,end,z --
+5 vfunc: tb_copy		| tb,tbfrom,start,end,to --
+3 vfunc: tb_select		| tb,start,end --
+1 func:  tb_selection	| tb -- z
+1 vfunc: tb_remove_selection	| tb --
+2 vfunc: tb_replace_selection	| tb,z --
+
+pop~

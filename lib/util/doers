@@ -1,0 +1,130 @@
+| "doers" for Reva
+| vim: ft=reva :
+
+push~
+~
+with~ ~sys
+with~ ~priv
+
+~priv
+: (make)  ( newxt doer -- )
+	| save current vector to the save area:
+	dup @ over cell+ !
+	| update current vector:
+	!
+	;
+: (undo)
+	| restore old vector:
+	dup cell+ @ swap !
+	;
+exit~
+
+: doer 
+	create 
+		['] noop dup , ,
+	does>
+		@execute
+	;
+
+macro
+: make ( <name> -- )
+	' here
+	compiling? if
+		literal, literal,
+		['] (make) compile
+	;then
+	swap (make) p: ]
+	
+	;
+
+: undo ( <name> -- )
+	'
+	compiling? if
+		literal,
+		['] (undo) compile
+	;then
+	(undo)
+	;
+: >defer ( <name> -- )
+	' 
+	compiling? if
+		literal, ['] ! compile
+	;then
+	!
+	;
+forth
+pop~
+
+|||
+def: doer 
+ctx: ~
+stack:  <name> 
+ver: 9.0.8
+desc: =
+	Creates a "doer", which is similar to a "defer"ed word.  Actually, it is the
+	same except that it is set using "make", and can be restored to the previous
+	value using "undo"
+
+	The default behavior of a "doer" is to do nothing.  Ironic, that.
+=
+
+def: undo 
+ctx: ~
+stack:  <name> 
+ver: 6.0.4
+desc: =
+	NOTE: In 9.0.8 was moved to util/doers
+
+	Restores the previous behavior of a "doer" which may have been set using
+	"make".  
+
+	At most one previous behavior is saved.
+
+=
+
+de desc: =
+      Kommt noch.
+=
+
+def: make 
+ctx: ~
+stack:  <name> 
+ver: 6.0.4
+desc: =
+	NOTE: In 9.0.8 was moved to util/doers
+
+	Sets the current behavior of a "doer" to the code following it.  Each time
+	"make" is invoked, it saves the previous value of the "doer" so that "undo"
+	can restore it. 
+
+	Example:
+
+		doer joe
+		make joe ." Hi there!" cr ;
+		joe | prints "Hi there!"
+		make joe ." no way" cr;
+		joe | prints "no way"
+		undo joe
+		joe | prints "Hi there!"
+	=
+
+de desc: =
+      Kommt noch.
+=
+
+def: >defer 
+ctx: meta
+ctx: ~
+stack:  xt <name> 
+ver: 6.0.4
+desc: =
+	Similar to "is", but does not affect default behavior.  Changes
+	current behavior of the deferred word <name> to the "xt". If you
+	want to change the default behavior as well, use "is" instead.
+	=
+
+de desc: =
+      Kommt noch.
+=
+
+related: doer make undo defer >defer

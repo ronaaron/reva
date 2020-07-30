@@ -1,0 +1,102 @@
+| vim: ft=reva :
+| PDF printing functionality
+
+needs print/base
+needs db/sqlite
+
+push~
+~db ~ ~print
+
+context: ~pdf
+~pdf
+
+variable current-pdf
+variable pdf-act-sql
+variable pdf-obj-sql
+variable pdf-file
+
+: pdf-line linefeed pdf-file @ write ;
+: pdf-writeln ( a n -- )
+	pdf-file @ write pdf-line ;
+
+: pdf-header ( -- )
+	" %PDF-1.4" pdf-writeln ;
+
+: pdf-xref ( -- )
+	;
+
+: pdf-trailer ( -- )
+	" trailer" pdf-writeln
+	pdf-xref
+	" %%EOF" pdf-writeln
+	;
+
+: (pdf-act-sql) quote =
+	INSERT INTO actions
+	VALUES (NULL,:1,:2,:3);
+	= ;
+
+: (pdf-obj-sql) quote =
+	INSERT INTO objects
+	VALUES (NULL, :1);
+	= ;
+
+: (pdf-init-sql) ( -- )
+	current-pdf @ (pdf-act-sql) sql_prepare pdf-act-sql !
+	current-pdf @ (pdf-obj-sql) sql_prepare pdf-obj-sql !
+	;
+
+: (pdf-new) ( -- h )
+	" :memory:" sql_open  00;
+	dup
+	quote =
+CREATE TABLE objects ( id integer primary key, name char );
+CREATE TABLE actions ( actno integer primary key, posx integer,  posy integer, action char);
+	= sql_exec
+	;
+
+: pdfact ( x y a n -- )
+	zt 3 swap
+	pdf-act-sql @ 2swap sql_bind_string
+	pdf-act-sql @ 2 rot sql_bind_int
+	pdf-act-sql @ 1 rot sql_bind_int
+	0 sql_pexec
+	;
+
+~print
+
+: pdf-new ( -- h )
+	(pdf-new) 00;
+	dup current-pdf !
+	;
+
+: pdf-save ( a n -- )
+	creat pdf-file !
+	pdf-header
+	pdf-trailer
+	pdf-file @ close
+	pdf-file off
+	0 current-pdf xchg sql_close
+	;
+
+: pdf-setcurrent ( h -- )
+	dup current-pdf !
+	(pdf-init-sql)
+	;
+
+: pdf-set-pagesize ( size -- )
+	;
+
+pop~
+
+|||
+
+
+def: pdf-new
+stack: -- h
+ctx: ~print
+ver: 2011.1
+desc: *
+	Create a new PDF document.  The document is not written to disk until
+	'pdf-save' is called.
+*

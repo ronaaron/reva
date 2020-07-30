@@ -1,0 +1,4 @@
+*.map
+*.lst
+*.o
+_FOSSIL_

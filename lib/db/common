@@ -1,0 +1,397 @@
+| common functions for database APIs
+| vim: ft=reva :
+
+push~ 
+
+~strings ~util ~
+context: ~db
+~db
+| utility: convert " to "" inside string:
+8096 cell- constant #BUF
+create ("") #BUF cell+ allot
+: quote" ( a n -- a' n' )
+	0 ("") !	| ensure empty buffer
+	'" split if
+		repeat
+			("") +lplace
+			'" ("") c+lplace
+			'" ("") c+lplace
+			dup 0if false else '" split then
+		while
+	then
+	("") +lplace
+	("") lcount
+	;
+: quote' ( a n -- a' n' )
+	0 ("") !	| ensure empty buffer
+	39 split if
+		repeat
+			("") +lplace
+			39 ("") c+lplace
+			39 ("") c+lplace
+			dup 0if false else 39 split then
+		while
+	then
+	("") +lplace
+	("") lcount
+	;
+
+variable sql_result
+defer sql_open
+defer sql_close
+defer sql_fetch
+defer sql_exec
+defer sql_version
+defer sql_lastid
+defer sql_getcol$
+defer sql_getcol#
+
+defer sql_prepare
+defer sql_bind_null
+defer sql_bind_int
+defer sql_bind_string
+defer sql_bind_blob
+defer sql_bind_blobz
+defer sql_pexec
+defer sql_first
+defer sql_next
+
+defer sql_pcol_text
+defer sql_pcol_int
+defer sql_pcol_blob
+
+defer sql_finalize
+defer sql_unbind
+defer sql_errmsg
+
+~strings ~priv 
+create sql_temp 10000 allot
+: sql_oneshot 0 sql_getcol$ 9996 min sql_temp lplace true ;
+exit~ with~ ~priv
+: sql_begin ( h -- )  " BEGIN TRANSACTION" sql_exec ;
+: sql_commit ( h -- ) " COMMIT" sql_exec ;
+: sql_rollback ( h -- ) " ROLLBACK" sql_exec ;
+: (fetch) sql_temp off ['] sql_oneshot sql_fetch drop ;
+: sql_fetch# ( h a n -- m ) (fetch) sql_temp lcount >>single ;
+: sql_fetch$ ( h a n -- a n ) (fetch) sql_temp lcount ;
+
+
+: sql_prepared[ ( db^ <varname> ] -- )
+	create
+		0 , , '] parse asciizl,
+	does>
+		dup >r @ ?dup 0if
+			| not-ok, initialize the variable
+			r@ cell+ @ @
+			r@ 2cell+ lcount
+			sql_prepare dup r@ !  
+		then
+		rdrop
+	;
+pop~
+
+|||
+def: sql_begin
+ctx: ~db
+stack: db --
+ver: 6.1.8
+desc: =
+	Issues a "BEGIN TRANSACTION" to the database "db".
+=
+def: sql_rollback
+ctx: ~db
+stack: db --
+ver: 6.1.8
+desc: =
+	Issues a "ROLLBACK" to the database "db".
+=
+def: sql_commit
+ctx: ~db
+stack: db --
+ver: 6.1.8
+desc: =
+	Issues a "COMMIT" to the database "db".
+=
+
+def: quote'
+ctx: ~db
+stack: a n -- a' n'
+desc: =
+	Given a string, returns a new string where every occurrence of the
+	single-quote character "'" is replaced by two single-quotes, "''".
+=
+
+
+def: quote"
+ctx: ~db
+stack: a n -- a' n'
+desc: =
+	Given a string, returns a new string where every occurrence of the
+	dbl-quote character '"' is replaced by two dbl-quotes, '""'.
+=
+
+
+def: sql_fetch#
+ctx: ~db
+stack: handle a n -- m
+desc: =
+	Given a SQL string (a,n) and a database handle, returns the result of the
+	query as an integer.  This will only be useful for SQL like:
+
+		select sum(amount) from account 
+=
+
+
+def: sql_fetch$
+ctx: ~db
+stack: handle a n -- a' n'
+desc: =
+	Given a SQL string (a,n) and a database handle, returns the result of the
+	query as a string.  This will only be useful for SQL like:
+
+		select firstname from customer where custid=1234 
+=
+
+
+def: sql_fetch
+ctx: ~db
+stack: handle a n xt -- m
+desc: =
+	Executes the SQL string (a,n) on the database handle, calling "xt" (a normal
+	Reva word) for each row of the result.  Returns the number of rows
+	processed.  The "xt" has the stack diagram ( n -- flag ): "n" is the number
+	of columns in the result, and the return value is "false" to continue
+	processing and "true" to stop.  Inside the callback one may use
+	"sql_getcol$" and "sql_getcol#" to return the n'th column of the result.
+=
+
+
+def: sql_getcol#
+ctx: ~db
+stack: n -- m
+desc: =
+	Inside a callback (the "xt" passed to sql_fetch), get the value of column
+	"n" as a number "m"
+=
+
+
+
+def: sql_getcol$
+ctx: ~db
+stack: n -- a n
+desc: =
+	Inside a callback (the "xt" passed to sql_fetch), get the value of column
+	"n" as a string (a,n)
+=
+
+
+def: sql_lastid
+ctx: ~db
+stack: handle -- rowid
+desc: =
+	Given a database handle, return the id of the last row entered.
+=
+
+
+def: sql_version
+ctx: ~db
+stack:  -- a n
+desc: =
+	String representing the version of SQLite loaded.
+=
+
+
+def: sql_exec
+ctx: ~db
+stack: handle a n --
+desc: =
+	Execute the SQL (a,n) on the database handle.
+=
+
+
+def: sqlite_exec_cb
+ctx: ~db
+stack:  handle a n cb --
+desc: =
+	Same as "sql_exec", but calls the "cb" (which must be a "callback", not
+	a regular Reva word) for each row in the result.
+=
+
+
+def: sql_close
+ctx: ~db
+stack:  handle --
+desc: =
+	Closes the database handle created with "sql_open"
+=
+
+
+def: sql_open
+ctx: ~db
+stack: a n -- handle
+desc: =
+	Opens the database named (a,n) and returns a handle to be used for accessing
+	the database.
+=
+
+
+def: sql_result
+ctx: ~db
+stack:  -- a
+desc: =
+	Variable containing the result of the most recent SQLite call
+=
+
+def: sql_prepare
+ctx: ~db
+stack: db a n -- x
+ver: 9.0.11
+desc: |
+	Take the SQL string (a,n) and the open database connection "db", and compile
+	it for later use with sql_pexec.  
+
+	The value returned must be given to sql_finalize when it is no longer
+	needed.
+|
+
+def: sql_finalize
+ctx: ~db
+stack: x -- 
+ver: 9.0.11
+desc: |
+	Deallocates the compiled SQL statement "x".  Called when that statement is
+	no longer going to be used.
+|
+
+def: sql_bind_null
+ctx: ~db
+stack: x pos -- 
+ver: 9.0.11
+desc: |
+	Binds the SQL NULL value to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+|
+def: sql_bind_int
+ctx: ~db
+stack: x pos n -- 
+ver: 9.0.11
+desc: |
+	Binds the integer value "n" to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+|
+def: sql_bind_string
+ctx: ~db
+stack: x pos a n -- 
+ver: 9.0.11
+desc: |
+	Binds the string value "(a,n)" to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+|
+def: sql_bind_blob
+ctx: ~db
+stack: x pos a n -- 
+ver: 9.0.11
+desc: |
+	Binds the BLOB value "(a,n)" to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+|
+def: sql_bind_blobz
+ctx: ~db
+stack: x pos n -- 
+ver: 9.0.11
+desc: |
+	Binds a BLOB value of "n" zeros  to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+|
+def: sql_pexec
+ctx: ~db
+stack: x xt -- 
+ver: 9.0.11
+desc: |
+	Execute the compiled SQL "x", calling "xt" for each row returned (if the
+	statement returns any rows).  
+
+	The "xt" must return "true" to continue, or "false" to stop.  If the "xt" is
+	zero, no callback will occur.
+|
+def: sql_pcol_text
+ctx: ~db
+stack: n -- a n
+ver: 9.0.11
+desc: |
+	Called from within a sql_pexec callback in order to return data for a
+	specific column of the row, numbered from zero.
+|
+def: sql_pcol_int
+ctx: ~db
+stack: n -- m
+ver: 9.0.11
+desc: |
+	Called from within a sql_pexec callback in order to return data for a
+	specific column of the row, numbered from zero.
+|
+def: sql_pcol_blob
+ctx: ~db
+stack: n -- a n
+ver: 9.0.11
+desc: |
+	Called from within a sql_pexec callback in order to return data for a
+	specific column of the row, numbered from zero.
+|
+def: sql_unbind
+ctx: ~db
+stack: x -- 
+ver: 9.0.11
+desc: |
+	Reset the compiled SQL so that fresh parameters can be bound to it
+|
+def: sql_errmsg
+ctx: ~db
+stack: -- a n
+ver: 9.0.11
+desc: |
+	Return text corresponding to the most recent SQL error
+|
+
+def: sql_prepared[
+ctx: ~db
+stack: db^ <varname> ...] -- 
+ver: 2011.1
+desc: |
+	Create a SQL prepared statement which automatically initializes the first
+	time it is used.  The 'db^' is a variable containing the database handle to
+	use (because it may change at runtime, it's a variable).   The SQL statement
+	is bounded by a final ']'
+
+	Example:
+
+		db sql_prepared[ sql1 select x from y where z=:1 ]
+|
+def: sql_first
+ctx: ~db
+stack: x -- 
+ver: 2011.1
+desc: |
+	Initialize the compiled SQL "x" for subsequent "sql_next".  
+|
+def: sql_next
+ctx: ~db
+stack: x xt -- f
+ver: 2011.1
+desc: |
+	Return next row after "sql_first" or "sql_next".  
+	If a row was found, execute "xt" and return TOS.  Otherwise return "false"
+	and set sql_error.
+|
+
+related: sql_begin sql_rollback sql_commit quote' quote" sql_fetch# sql_fetch$ sql_fetch sql_getcol# sql_getcol$ sql_lastid sql_version sql_exec sqlite_exec_cb sql_close sql_open sql_result sql_prepare sql_finalize sql_bind_null sql_bind_int sql_bind_string sql_bind_blob sql_bind_blobz sql_pexec sql_pcol_text sql_pcol_int sql_pcol_blob sql_unbind sql_errmsg sql_prepared[ sql_first sql_next

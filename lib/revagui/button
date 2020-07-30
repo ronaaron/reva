@@ -1,0 +1,10 @@
+| vim: ft=reva :
+
+push~
+needs revagui/common
+
+~ ~revagui revagui drop
+
+5 func: button | x,y,w,h,title
+
+pop~

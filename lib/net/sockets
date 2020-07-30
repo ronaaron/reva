@@ -1,0 +1,289 @@
+| vim: ft=reva :
+| Socket wrapper
+
+push~
+~os ~io ~util ~strings ~
+context: ~sockets
+
+~sockets
+
+create CRLF 13 1, 10 1,
+: crlf CRLF 2 ;
+: bswap [ $c80f 2, ;
+create sockaddr 0 , 0 , 0 , 0 , 0 ,
+create socketparams 2 , 1 , 0 ,
+create listenparams 0 , 16 ,
+create bindparams 0 , sockaddr , 16 ,
+create acceptparams 0 , sockaddr , nul ,
+
+LIN [IF]
+:  htons ;
+:  htonl ;
+:  shutdown ;
+
+: socketcall 2 102 syscall ;
+: socket ( domain type proto -- sock )
+	socketparams >r
+	r@ 2 cells + !
+	r@ cell+ !
+	r@ !
+	r> 1 socketcall ;
+: bind   bindparams   2 socketcall ;
+: connect  ( socket sockaddr flags )
+	bindparams >r
+	r@ 2 cells + !
+	r@ cell+ !
+	r@ !
+	r>  3 socketcall ;
+: listen listenparams 4 socketcall ;
+: accept acceptparams 5 socketcall ;
+: sockerror errno ;
+hide socketcall
+1 func:  gethostbyname
+: closesocket close ;
+: send drop rot write ;
+: recv drop rot read ;
+4 cells constant HOSTADDRIP
+[THEN]
+
+MAC [IF]
+libc drop
+:  htons ;
+:  htonl ;
+:  shutdown ;
+
+3 func: socket
+3 func: bind
+3 func: connect
+2 func: listen
+3 func: accept
+: sockerror errno ;
+1 func:  gethostbyname
+: closesocket close ;
+
+: send drop rot write ;
+: recv drop rot read ;
+
+4 cells constant HOSTADDRIP
+[THEN]
+
+WIN [IF]
+" wsock32.dll" lib wsock32
+3 cells constant HOSTADDRIP
+2 func:  WSAStartup
+0 func:  WSACleanup
+3 func:  accept 
+3 func:  bind
+3 func:  connect
+1 func:  gethostbyname
+3 func:  socket
+2 func:  listen
+4 func:  send
+4 func:  recv
+1 func:  htons
+1 func:  htonl
+1 func:  inet_addr
+1 func:  inet_ntoa
+1 func:  closesocket
+2 func:  shutdown
+0 func: WSAGetLastError
+| make sure we release stuff when we are done!
+: socketlib_close WSACleanup drop ;
+: sockerror WSAGetLastError ;
+create wsadata 560 allot
+: socketlib_start
+	wsadata 560 zero
+	$101 wsadata WSAStartup drop
+	;
+socketlib_start
+' socketlib_start in~ ~sys onstartup
+' socketlib_close in~ ~sys onexit
+
+[THEN]
+
+2 constant PF_INET
+1 constant PF_UNIX
+1 constant SOCK_STREAM
+2 constant SOCK_DGRAM
+: sockbad? dup 0 <if true else false then ;
+: tcpsock PF_INET SOCK_STREAM 0 socket ;
+: udpsock PF_INET SOCK_DGRAM 0 socket ;
+: host>addr ( a n -- ipaddr ) zt gethostbyname 00; HOSTADDRIP + @ @ @ ;
+| Connect to a server using INET sockets.  If 'n' is non-zero, then a,n is a
+| string with the name of a server.  If 'n' is zero, then a is an IP address
+| Returns -1 on failure, or a valid socket number on success.
+: connectsocket ( a n port -- sock )
+	| make a socket and connect
+	tcpsock sockbad? if 3drop -1 ;; then
+	| valid socket.  stash away the new socket
+	>r
+	| set up the port/protocol
+	bswap PF_INET or sockaddr !
+	| get the name of the server of interest
+	host>addr sockaddr cell+ !
+	| and try to connect to it:
+	r@ sockaddr 16 connect 0 <if r> closesocket -1 >r then
+	r>
+	;
+hide sockaddr
+4096 value recvallbufsize
+0 value recvallbuf 
+
+: recvall ( socket xt -- )
+	recvallbufsize allocate to recvallbuf
+	>r			| xt to call w/ buffer
+	repeat
+		dup recvallbuf recvallbufsize 0 recv		| s b m n
+		recvallbuf over r@ execute
+	while
+	rdrop drop
+	recvallbuf free 0 to recvallbuf
+	;
+hide recvallbuf
+pop~
+||| 
+
+
+def: crlf
+ctx: ~sockets
+stack: -- a n
+desc: =
+	Returns a string with the two characters CR and LF, which are required for
+	many network protocols
+=
+
+def: bswap
+ctx: ~sockets
+stack: n -- n'
+desc: =
+	Swaps the byte order of "n"
+=
+
+def: socket
+ctx: ~sockets
+stack: domain type proto  -- sock
+desc: =
+	Creates a raw socket of the specified type.  See "man 2 socket" on Unix
+	systems or the appropriate alternative for Windows systems.
+=
+
+def: bind
+ctx: ~sockets
+stack: sock name len -- result
+desc: =
+	Binds the socket to the specified local address.  
+	Returns 0 for success, or something else for error.
+=
+
+def: connect
+ctx: ~sockets
+stack: sock name len -- result
+desc: =
+	Connects the socket to the remote address. 
+	Returns 0 for success, or something else for error.
+=
+
+def: listen
+ctx: ~sockets
+stack: sock backlog -- result
+desc: =
+	Makes the socket listen for incoming connections.
+	Returns 0 for success, or something else for error.
+=
+
+def: accept
+ctx: ~sockets
+stack: sock addr len -- result
+desc: =
+	Accepts an incoming connection from "listen".  The addr,len points to a
+	sockaddr structure (but is optional)
+	Returns 0 for success, or something else for error.
+=
+
+def: sockerror
+ctx: ~sockets
+stack: -- n
+desc: =
+	Returns last socket error:  0 for success, or something else for error.
+=
+
+def: gethostbyname
+ctx: ~sockets
+stack: z -- a
+desc: =
+	Take the ASCIIZ string of a hostname, and return NULL on error, or a
+	'hostent' structure containing information about the specified host
+=
+
+def: tcpsock
+ctx: ~sockets
+stack: -- s
+desc: =
+	Create a new TCP socket
+=
+
+def: udpsock
+ctx: ~sockets
+stack: -- s
+desc: =
+	Create a new UDP socket
+=
+
+def: host>addr
+ctx: ~sockets
+stack: a n -- ipaddr
+desc: =
+	Takes the specified host name, and returns its IP address
+=
+
+def: connectsocket
+ctx: ~sockets
+stack: a n port -- sock
+desc: =
+	Connect to the specified host and port with TCP.  If 'n' is non-zero, then
+	(a,n) is the name of a server.  If 'n' is zero, then 'a' is an IP address.
+
+	Returns -1 on failure, or a valid socket on success.
+=
+
+def: recvallbufsize
+ctx: ~sockets
+stack:  -- n
+ver: 7.0.9
+desc: =
+	Value which controls the size of the buffer allocated and used by "recvall".
+	It is 4096 by default, but can be changed to suit the specific application.
+=
+
+def: recvall
+ctx: ~sockets
+stack: sock xt --
+ver: 7.0.9
+desc: =
+	Repeatedly does "recv" on "sock", calling "xt" for each chunk received.
+
+	The stack diagram of "xt" is ( a n -- )  so don't forget to consume the text
+	fed in!
+
+	NOTE: The maximum size of 'n' is 'recvallbufsize', which by default is 4096
+	but may be changed.  
+
+	NOTE: 'n' may be zero, so check for that case if necessary.
+=
+
+def: recv
+ctx: ~sockets
+stack: sock buf len flags -- recvd
+desc: =
+	Low level receive function.  You might prefer to use "recvall"
+=
+
+def: send
+ctx: ~sockets
+stack: sock buf len flags -- sent
+desc: =
+	Low level send function.  Returns the number of characters actually sent,
+	which may be fewer than 'len'.
+=
+
+related: recvallbufsize crlf bswap socket bind connect listen accept sockerror gethostbyname tcpsock udpsock host>addr connectsocket recvall recv send

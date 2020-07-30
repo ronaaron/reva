@@ -1,0 +1,63 @@
+				   Reva Forth
+			 by Ron Aaron (ron@ronware.org)
+			 and the Reva development team
+
+This document is intended as a "first step" to get you up and running Reva.
+The complete documentation is on the Wiki: 
+
+	http://dev.ronware.org/p/reva
+	
+That is where you should look for in-depth information (including installation
+information).  It is kept up-to-date.
+
+INSTALLATION
+
+Reva is distributed "ready to run".  Unzip the distribution ZIP file wherever
+you want the "reva" directory to appear.  Then put that path plus "reva/bin/lin"
+(on Linux or 'reva/bin/mac' for Mac OS/X or "reva\bin\win" for Windows) in your
+PATH environment variable.
+
+For example:  if you unpacked the ZIP file to "C:\MYSTUFF", then you will want
+to make sure "C:\MYSTUFF\REVA\BIN" is added to your PATH.  Similarly on Linux if
+you had unpacked to "mystuff" in your home directory, add "~/mystuff/reva/bin"
+to your PATH.
+
+You may also rename the "reva" directory to something else, for example
+"reva905" or something.  Just make sure the correct name is in  the PATH, or you
+will have to use the full path to Reva to get it to start.
+
+BUILDING
+
+As mentioned, Reva is "ready to run".  However, you may want to rebuild Reva or
+the "core" yourself.  Rebuilding Reva itself only requires the "reva core".
+Rebuilding the "reva core" requires the NASM assembler and the gcc compiler. 
+
+There are two possible scenarios:
+
+	1. The "build" programs exist.  Look in the "bin/xxx" directory for a
+	"build" file, where 'xxx' is one of 'win', 'lin' or 'mac'.
+
+	If the build program exists, simply type "bin/xxx/build" (as appropriate
+	for your OS).  That will rebuild "reva".  You can type "build core" to
+	build the "reva core", in the event you need to.
+
+	2. You somehow removed the "build" programs or they don't work for you
+	(please report that as a bug!).  So if you have NASM and make, type:
+
+		make bootstrap
+
+GETTING HELP
+
+Reva has a pretty good online help system.  Just type "help".  For help on a
+specific word, specify that word after "help" -- for example, "help @"
+
+Should you find Reva useful, please send me an email and/or consider joining the
+Reva email list -- the link to it is on the Reva main web page listed above.
+
+HELPING OUT
+
+If you want to contribute code to Reva, you can always send and email to Ron.
+But if you want to be an active developer, please ask Ron for a developer's
+account; then you will be able to keep in the active development loop.
+
+Enjoy!

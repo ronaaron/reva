@@ -1,0 +1,14 @@
+| vim: ft=reva :
+
+push~
+needs revagui/common
+
+~ ~revagui revagui drop
+
+3 func: window | w,h,title
+5 func: window_xy | x,y,w,h,title
+1 vfunc: window_end  | w
+1 vfunc: window_begin  | w
+1 vfunc: window_show | w
+
+pop~

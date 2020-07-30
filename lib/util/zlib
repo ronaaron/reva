@@ -1,0 +1,191 @@
+| vim: ft=reva:
+| ZLIB library wrapper
+
+push~
+~util
+~priv
+LIN [IF] " libz.so" [THEN]
+MAC [IF] " libz.dylib" [THEN]
+WIN [IF] " zlib1.dll" [THEN] 
+lib zlib
+
+~
+0 func: zlibVersion
+3 func: crc32 as zlib_crc32 | ( crc buf len -- crc2 )
+
+| gzip file funcs:
+
+2 func: gzopen  | ( path mode -- handle )
+3 func: gzread | ( handle buf len -- read ) -- 0=EOF, -1 ==ERR
+3 func: gzwrite | ( ahndle buf len -- written ) 
+3 func: gzseek | ( handle offset whence -- offset )
+1 func: gztell | ( handle -- offset )
+1 func: gzclose | ( handle -- result )
+
+1 func: compressBound as zlib_compressbound | ( len -- maxlen )
+4 func: compress as zlib_compress | ( dest destsize^ src srcsize -- result ) Z_OK, etc
+4 func: uncompress  as zlib_uncompress | ( dest destsize^ src srcsize -- result ) Z_OK, etc
+0 func: zlibVersion
+
+pop~
+
+|||
+
+def: zlibVersion
+stack: -- zstr
+ctx: ~
+desc: =
+	Returns a zstring containing the version of the ZLIB library loaded.
+=
+
+def: zlib_uncompress
+stack: dest destsize^ src srcsize -- result
+ctx: ~
+desc: =
+	Decompresses the source buffer into the destination buffer. sourceLen is the
+	byte length of the source buffer. Upon entry, destLen is the total size of
+	the destination buffer, which must be large enough to hold the entire
+	uncompressed data. (The size of the uncompressed data must have been saved
+	previously by the compressor and transmitted to the decompressor by some
+	mechanism outside the scope of this compression library.) Upon exit, destLen
+	is the actual size of the compressed buffer.
+
+	This function can be used to decompress a whole file at once if the input
+	file is mmap'ed.
+
+	uncompress returns Z_OK if success, Z_MEM_ERROR if there was not enough
+	memory, Z_BUF_ERROR if there was not enough room in the output buffer, or
+	Z_DATA_ERROR if the input data was corrupted. 
+=
+
+def: zlib_compress
+stack: dest destsize^ src srcsize -- result
+ctx: ~
+desc: =
+	Compresses the source buffer into the destination buffer. sourceLen is the
+	byte length of the source buffer. Upon entry, destLen is the total size of
+	the destination buffer, which must be at least 0.1% larger than sourceLen
+	plus 12 bytes. Upon exit, destLen is the actual size of the compressed
+	buffer.
+
+	This function can be used to compress a whole file at once if the input file
+	is mmap'ed.
+
+	compress returns Z_OK if success, Z_MEM_ERROR if there was not enough
+	memory, Z_BUF_ERROR if there was not enough room in the output buffer.
+=
+
+def: zlib_compressBound
+stack: len -- maxlen
+ctx: ~
+desc: =
+	Returns the maximum size required to compress "len" bytes.
+=
+
+def: zlib_crc32
+stack: crc buf len -- crc'
+ctx: ~
+desc: =
+	Update a running crc with the bytes buf[0..len-1] and return the updated
+	crc. If buf is NULL, this function returns the required initial value for
+	the crc. Pre- and post-conditioning (one's complement) is performed within
+	this function so it shouldn't be done by the application. Usage example:
+
+		0 value crc
+		0 0 0 zlib_crc32 to crc 
+		repeat
+			num-bytes read-buffer if
+				crc buffer num-bytes zlib_crc32 to crc
+			then
+		while
+		...
+=
+
+def: gzclose
+stack: handle -- result
+ctx: ~
+desc: =
+	Flushes all pending output if necessary, closes the compressed file and
+	deallocates all the (de)compression state. The return value is the zlib
+	error number (see function gzerror below).
+=
+
+def: gztell
+stack: handle -- offset
+ctx: ~
+desc: =
+	Returns the starting position for the next gzread or gzwrite on the given
+	compressed file. This position represents a number of bytes in the
+	uncompressed data stream.
+
+	gztell(file) is equivalent to gzseek(file, 0L, SEEK_CUR) 
+=
+
+def: gzseek
+stack: handle offset whence -- offset
+ctx: ~
+desc: =
+	Sets the starting position for the next gzread or gzwrite on the given
+	compressed file. The offset represents a number of bytes in the uncompressed
+	data stream. The whence parameter is defined as in lseek(2); the value
+	SEEK_END is not supported.
+
+	If the file is opened for reading, this function is emulated but can be
+	extremely slow. If the file is opened for writing, only forward seeks are
+	supported ; gzseek then compresses a sequence of zeroes up to the new
+	starting position.
+
+	gzseek returns the resulting offset location as measured in bytes from the
+	beginning of the uncompressed stream, or -1 in case of error, in particular
+	if the file is opened for writing and the new starting position would be
+	before the current position. 
+=
+
+def: gzwrite
+stack: handle buf len -- written
+ctx: ~
+desc: =
+	Writes the given number of uncompressed bytes into the compressed file.
+	gzwrite returns the number of uncompressed bytes actually written (0 in case
+	of error).
+=
+
+def: gzread
+stack: handle buf len -- read
+ctx: ~
+desc: =
+	Reads the given number of uncompressed bytes from the compressed file. If
+	the input file was not in gzip format, gzread copies the given number of
+	bytes into the buffer.
+
+	gzread returns the number of uncompressed bytes actually read (0 for end of
+	file, -1 for error). 
+=
+
+def: gzopen
+stack: zpath mode -- handle
+ctx: ~
+desc: =
+	Opens a gzip (.gz) file for reading or writing. The mode parameter is as in
+	fopen ("rb" or "wb") but can also include a compression level ("wb9") or a
+	strategy: 'f' for filtered data as in "wb6f", 'h' for Huffman only
+	compression as in "wb1h". (See the description of deflateInit2 for more
+	information about the strategy parameter.)
+
+	gzopen can be used to read a file which is not in gzip format ; in this case
+	gzread will directly read from the file without decompression.
+
+	gzopen returns NULL if the file could not be opened or if there was
+	insufficient memory to allocate the (de)compression state 
+=
+
+def: util/zlib 
+ctx: ~
+desc: +
+	Simple wrapper around the ZLIB compression library.  See the ZLIB
+	documentation for detailed information on these words.
+		http://www.zlib.net/manual.html
++
+
+
+related: util/zlib gzopen gzread gzwrite gzseek gztell gzclose zlib_crc32 zlib_compressBound zlib_compress zlib_uncompress

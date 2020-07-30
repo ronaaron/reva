@@ -1,0 +1,62 @@
+| common words for all assemblers
+| vim: ft=reva :
+
+
+push~
+context: ~asm
+~asm
+context: ~asmpriv
+~asmpriv
+
+defer (assemble)
+defer (out-of-memory)
+defer (exe-header)
+defer (exe-save)
+defer (code-start)
+defer (code-end)
+defer (data-start)
+defer (data-end)
+defer (udata-start)
+defer (udata-end)
+defer (exe-set-entry)
+
+variable asm-here
+variable asm-here-limit
+variable origin
+| ran out of memory :<
+: ASM " Assembler: " ;
+:: " assembler out of memory" ASM ERROR ; is (out-of-memory)
+
+| Assemble 'here'
+: (assemble-here) 1, here asm-here !  ;
+| Assemble to 'asm-here'
+: (assemble-mem) 
+	| check for out-of-memory before poking our byte
+	asm-here-limit @ 1 <if
+		(out-of-memory)
+	then
+	asm-here @ c!  
+	asm-here ++ 
+	asm-here-limit --
+	;
+
+~asm
+: org  ( a -- ) origin !  ;
+: +org ( a -- a' ) origin @ + ;
+: asm>mem ( a n -- )
+	asm-here-limit !
+	asm-here !
+	['] (assemble-mem) is (assemble) ;
+: asm>here  ( -- )
+	here org
+	['] (assemble-here) is (assemble) ;
+asm>here | default to compiling 'here'
+
+: begin-exe (exe-header) ;
+: save-exe ( a n -- ) (exe-save) ;
+: code (data-end) (udata-end) (code-start) ;
+: data (code-end) (udata-end) (data-start) ;
+: bss (code-end) (data-end) (udata-start) ;
+: entry-point ( xt -- ) (exe-set-entry) ;
+
+pop~

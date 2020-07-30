@@ -1,0 +1,76 @@
+﻿<title>User Manual</title>
+<h1 align="center">Reva User Manual</h1>
+
+<h1>Preface: what is Reva?</h1>
+
+Reva is based on [http://www.retroforth.org/|RetroForth], with many ideas fom
+[http://maschenwerk.de/HelFORTH/|HelFORTH].  It is a
+[http://en.wikipedia.org/wiki/Forth_(programming_language)|Forth] language
+compiler/interpreter, which has [Design goals|goals] which are not necessarily
+in keeping with the ANS Forth standard.
+
+<b>Reva is...</b><br>
+  *  Tiny: binaries are about 30k for both Windows and Linux
+  *  Fast: many of the core functions are written in [http://www.nasm.us/|NASM (x86 assembly-language)], and it benchmarks close to native C code in practice.
+  *  Cross-platform: Almost all words are available for Windows, Linux and Mac OS/X.
+  *  [./LICENSE.wiki|Public domain]: You are free to modify Reva for your own use. I would appreciate it if you credited Reva as the source, however.
+  *  Well documented: Besides the material here on the wiki, there is interactive help available within Reva itself (simply type <tt>help</tt>).  In addition, there is a very active and helpful [http://ronware.org/reva/|online user community].
+  *  Practical: designed to accomplish real-world goals quickly and easily.
+  *  Actively developed: a new [Development|development] release is made every 2-6 weeks, with the input of the user community.  Of course, you can be one of those active developers as well!
+
+<b>... but is not:</b><br>
+  *  ANS compliant: There are loads of [http://www.forth.org|ANS-compliant Forths]. Reva is not one of them, though there is a meager attempt at a compatibility layer. If you wish, you can start Reva with the -a command-line switch -- this will load the (incomplete and lame) ANS compatibility layer.
+  *  Complete: There is no attempt to add every possible feature. Rather, the idea is that it should be possible to build whatever is required from the core set, in a simple manner.
+
+<h2>Getting started</h2>
+  *  [Installation]
+  *  [Command-line|Reva's command-line parameters]
+  *  [Glossary]
+  *  [Help|Built-in help system]
+  *  Special notes [./linux.wiki|for Linux users]
+  *  Special notes [./mac.wiki|for Mac OS/X users]
+
+<h3>Tutorial material</h3>
+  *  [./tutorial.wiki|The basic tutorial for Reva]
+  *  [./tutorial-intermediate.wiki|A more advanced tutorial for Reva]
+  *  [./gotchas.wiki|Gotchas - things to be aware of]
+  *  [Tips and Tricks]
+
+<h3>Reva compared to other Forths</h3>
+  *  [Comparison of Reva/RetroForth/HelFORTH]
+  *  [Comparison with ANS Forth]
+  *  [Benchmarks]
+
+<h1>Concepts</h1>
+<h2>Forth</h2>
+  *  [Cells and Stacks]
+  *  [Words and the dictionary]
+  *  [Deferred words]
+
+<h2>Reva</h2>
+  *  [Numbers|Numbers: input, printing, types]
+  *  [Strings]
+  *  [Contexts|Contexts: Reva's improved version of "VOCABULARY"]
+  *  [Libraries|Libraries: Adding functionality to Reva's core]
+  *  [Turnkey|Turnkey: create a standalone application]
+  *  [Sandbox|Sandbox: how to avoid screwing things up]
+  *  [Files & File Handling]
+
+<h2>Advanced</h2>
+  *  [Exception handling]
+  *  [Parsing hooks]
+  *  [Classes]
+  *  [Creating help]
+
+<h2>Reva internals</h2>
+  *  [Source organization]
+  *  [Register usage]
+  *  [Memory usage]
+
+<h1>Further resources</h1>
+  *  [Bug Reporting|How to report a bug, problem, or feature-request]
+  *  [http://ronware.org/reva/|The Reva forum - a place to discuss Reva with others, and get advice]
+
+<h1>Appendices</h1>
+  *  [Credits]
+  *  [Kudos]

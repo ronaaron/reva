@@ -1,0 +1,63 @@
+This is XeTeX, Version 3.1415926-2.4-0.9998 (TeX Live 2012) (format=xetex 2012.12.18)  8 SEP 2013 10:08
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**z2
+(./z2.tex (/home/ron/.texlive2012/texmf-config/tex/ron/font/libertine.tex
+(/home/ron/.texlive2012/texmf-config/tex/ron/font/base.tex
+(/home/ron/.texlive2012/texmf-config/tex/ron/basemacros.tex
+(/usr/local/texlive/2012/texmf-dist/tex/eplain/eplain.tex)
+\footparbox=\box19
+\footnotebaselineskip=\skip26
+\holdoverbox=\box20
+\tempcount=\count51
+\lheader=\toks26
+\cheader=\toks27
+\rheader=\toks28
+\lfooter=\toks29
+\cfooter=\toks30
+\rfooter=\toks31
+\preheader=\toks32
+\postheader=\toks33
+\xheader=\toks34
+\xfooter=\toks35
+\pasuqfont=\toks36
+\headerskip=\skip27
+\footerskip=\skip28
+\footlinedim=\dimen58
+\greyboxsep=\dimen59
+\contentbox=\box21
+\bkgdbox=\box22
+\fitfontscaling=\count52
+\fitfonttoks=\toks37
+\engbaseskip=\skip29
+\hebbaseskip=\skip30
+\raggedskip=\skip31
+\headerfooterdim=\dimen60
+\tokA=\toks38
+\bookName=\toks39
+\bookNumber=\toks40
+\preheadline=\toks41
+\postheadline=\toks42
+\listperiod=\toks43
+\headerbox=\box23
+\bodydim=\dimen61
+)
+\engfontdim=\dimen62
+\hebfontdim=\dimen63
+\tempdim=\dimen64
+\currentfontsize=\count53
+\currentfontstyle=\count54
+\engstrutbox=\box24
+\hebstrutbox=\box25
+))
+(/home/ron/.texlive2012/texmf-config/tex/ron/font/liberation-mono.tex
+(/home/ron/.texlive2012/texmf-config/tex/ron/font/base.tex))
+Underfull \vbox (badness 10000) has occurred while \output is active
+\vbox(12.0+0.0)x477.99902
+.\hbox(0.0+0.0)x477.99902, glue set 238.99951fil
+..\glue 0.0 plus 1.0fil
+..\glue 0.0 plus 1.0fil
+
+ [1] )
+Output written on z2.pdf (1 page).

@@ -1,0 +1,596 @@
+| vim: ft=reva :
+| Database reports module
+
+push~
+~
+needs db/common
+~priv ~db
+
+context: ~report
+context: ~report-define
+
+| When executing a report, only the words in "~report" are visible.
+| This is a security feature:
+
+| Database against which the report will be run:
+variable report-db
+variable report-number
+variable do-page-header
+variable printed?
+
+defer report-header
+defer report-footer
+defer report-group-header
+defer report-group-footer
+defer report-detail
+defer page-header?
+
+defer: report-out type ;
+defer: report-page-out ;
+
+| Application-level reporting words:
+
+variable pageno
+
+~report
+: print ( a n -- ) 0drop; page-header? report-out printed? on ;
+: println ( a n -- ) print linefeed print ;
+~priv
+: (times) ( lstr n ) 0; over lcount eval 1- (times) ;
+exit~
+: times ( n <x> -- ) parseln dup cell+ 1+ allocate dup >r
+	lplace r>	| n lstr
+	swap 0 max (times) free ;
+
+~priv
+10 constant MAX_SQL
+5 constant MAX_PARAM
+
+create sql-statements MAX_SQL cells allot
+create sql-strings MAX_SQL 2* cells allot
+variable current-sql
+
+create (param#) MAX_PARAM cells allot
+create (param$) MAX_PARAM cells allot
+exit~
+
+: print# ( n -- ) (.) print ;
+| value given must be 1..MAX_PARAM
+~priv
+: clamp-param 1- MAX_PARAM 1- clamp ;
+: clamp-sql 1- MAX_SQL 1- clamp ;
+:: 10000 allocate ; autovar: (dowhile)
+: ensure$ ( a -- a )
+	dup @ 0if
+		10000 allocate over !
+	then ;
+: sql-statement! ( m n -- ) cells sql-statements + ! ;
+: sql-statement@ ( n -- m ) cells sql-statements + @ dup current-sql ! ;
+: sql-strings! ( m n -- ) cells 2* sql-strings + 2! ;
+: sql-strings@ ( n -- m ) cells 2* sql-strings + 2@ ;
+exit~
+: param# ( n -- m ) clamp-param cells (param#) + @  ;
+: param$ ( n -- a m )  clamp-param  cells (param$) + @
+	dup 00; drop lcount ;
+
+~db
+: set-report-param# ( m n -- ) clamp-param cells (param#) + ! ;
+: set-report-param$ ( a m n -- ) clamp-param cells (param$) + ensure$ @ lplace ;
+exit~
+: bind# ( pos n x -- ) 1- sql-statement@ -rot cr sql_bind_int ;
+: bind$ ( pos a n x -- ) 1- sql-statement@ 
+	>r rot r> swap 2swap	| sorry for the ugly stack-dance 
+	sql_bind_string ;
+
+| get column of results, as string.  value is 1...number of colums
+: col ( m -- a n ) 1- current-sql @ swap sql_pcol_text ;
+
+
+
+: sql: ( n <sql> -- )
+	clamp-sql >r
+	report-db @ parseln sql_prepare dup sql_first 
+	r> sql-statement!
+;
+: sql ( n <forth> -- ) 
+	clamp-sql >r
+	parseln 0 sql-strings!
+	r> sql-statement@ { 0 sql-strings@ eval  } sql_pexec ;
+
+: dowhile ( <word> <whatever> -- )
+	' >r
+	parseln (dowhile) lplace
+	repeat
+		r@ execute dup if
+			(dowhile) lcount eval
+		then
+	while
+	rdrop
+	;
+defer page
+macro
+: " '" parse/  "" ;
+forth
+
+defer: bold ( -- ) ;
+defer: /bold ( -- ) ;
+: page# ( -- a n ) pageno @ (.) ;
+exit~
+
+~report-define
+~priv
+THROW: ERR_NO_REPORT
+20000 constant BUF#
+variable report-in-definition
+:: BUF# cell+ 1+ allocate ; autovar: report-buffer
+exit~
+
+: report: ( <shortname> -- )
+	parsews quote' BUF# 50 - min
+	2dup " delete from reports where report_name='" report-buffer lplace
+	report-buffer +lplace
+	" '" report-buffer +lplace
+	report-db @ report-buffer lcount sql_exec
+
+	report-in-definition off
+	" insert into reports values (NULL, '"  report-buffer lplace
+	report-buffer +lplace
+	" ',NULL);" report-buffer +lplace
+	report-db @ report-buffer lcount sql_exec
+	| get the report number
+	report-db @ " select report_id from reports where _rowid_=last_insert_rowid()" sql_fetch# 
+	report-in-definition !
+	;
+~priv
+: defining-report?
+	report-in-definition @ 0if
+		." No report is being defined!" cr
+		ERR_NO_REPORT 
+	then
+	;
+exit~
+: description: ( <desc> -- )
+	defining-report?
+	report-db @
+	" update reports set report_description='" report-buffer lplace
+	parseln quote' BUF# 50 - min report-buffer +lplace
+	" ' where report_id=" report-buffer +lplace
+	report-in-definition @ (.) report-buffer +lplace
+	report-buffer lcount sql_exec
+	;
+
+~priv
+report-db sql_prepared[ add-report-sql 
+	insert into report_data 
+	(report_id, item_type, content) 
+	values (:1,:2,:3) ]
+: add-line ( a n <line> -- )
+	defining-report?
+	add-report-sql 1 report-in-definition @ sql_bind_int
+	add-report-sql 2 2swap sql_bind_string
+	add-report-sql 3 parseln quote' sql_bind_string
+	add-report-sql 0 sql_pexec
+	;
+exit~
+
+: RH ( <line> -- ) " RH" add-line ;
+: RF ( <line> -- ) " RF" add-line ;
+: PH " PH" add-line ;
+: PF " PF" add-line ;
+: DL " DL" add-line ;
+
+exit~
+
+: close-report report-db @ sql_commit ;
+
+: init-report-schema ( db -- )
+	quote *
+		begin;
+		create table if not exists reports ( 
+			report_id INTEGER PRIMARY KEY,
+			report_name TEXT,
+			report_description TEXT );
+		create table if not exists report_data (
+			report_id INTEGER,
+			line_item INTEGER PRIMARY KEY AUTOINCREMENT,
+			item_type TEXT,
+			content TEXT);
+		create unique index if not exists report_data_ix on report_data (
+			report_id,line_item
+			);
+		create trigger if not exists del_report1 after delete on reports
+			begin
+			delete from report_data where report_id=old.report_id;
+			end;
+		commit;
+	* sql_exec
+	;
+
+: init-report ( db -- )
+	dup report-db !
+	init-report-schema ;
+
+| for the table to work, it must have the schema given in 'init-report-schema'
+report-db sql_prepared[ load-report-sql select content from report_data
+	where report_id=:1 and item_type=:2
+	order by line_item ]
+report-db sql_prepared[ load-reportpage-sql select content from report_data
+	where report_id=:1 and item_type=:2
+	order by line_item ]
+
+report-db sql_prepared[ report-name-sql select report_id from reports
+	where report_name like :1 ]
+
+: run-report-item ( x a n -- )
+	load-report-sql 1 report-number @ sql_bind_int
+	load-report-sql 2 2swap sql_bind_string
+	load-report-sql swap sql_pexec
+	;
+: run-report-page-item ( x a n -- )
+	load-reportpage-sql 1 report-number @ sql_bind_int
+	load-reportpage-sql 2 2swap sql_bind_string
+	load-reportpage-sql swap sql_pexec
+	;
+
+: eval-report-item ( a n -- ) 0 sql_pcol_text eval true ;
+
+::
+	do-page-header @
+	printed? @ and
+	if
+		do-page-header off
+		| get the page header lines:
+		['] eval-report-item	" PH" run-report-page-item
+	then
+		do-page-header off
+	;	is	 page-header?
+
+::
+	| eject former page ...
+	pageno @ if
+		| get the page footer lines:
+		['] eval-report-item " PF" run-report-page-item
+	then
+
+	pageno ++ report-page-out 
+	do-page-header on
+	printed? off
+	; is ~report.page
+
+: run-report ( db m -- )
+	report-number !  report-db !
+	1 pageno !
+
+	push~
+	~db ~report
+	only~ ~report 
+
+	| get the report header lines:
+	['] eval-report-item " RH" run-report-item
+	| make sure the page header happens on the first page:
+	do-page-header on
+
+	| get the detail lines:
+	['] eval-report-item " DL" run-report-item
+
+	| eject last page:
+	printed? if ~report.page then
+
+	| get the report footer lines:
+	['] eval-report-item " RF" run-report-item
+	pop~
+	;
+
+: run-report-by-name ( db a n -- )
+	third dup report-db !
+	-rot report-name-sql 1 2swap sql_bind_string
+	report-name-sql { 0 sql_pcol_int here ! false } sql_pexec
+	here @  run-report
+	;
+
+: init-report-from-string ( db a n -- m )
+	rot init-report
+	push~
+	~db ~report-define
+	report-db @ sql_begin
+	only~ ~report-define eval 
+	pop~
+	close-report
+	~priv.report-in-definition @
+	;
+
+: init-report-from-file ( db a n -- m )
+	slurp dup 0if
+		| failed the read, so sorry
+		3drop -1
+	else
+		over >r
+		init-report-from-string
+		r> free
+	then
+	;
+
+ exit~
+pop~
+
+|||
+
+| words in context "~report", available within running reports
+def: print
+ver: 2011.1
+stack: a n -- 
+ctx: ~report
+desc: *
+	Prints the string (a,n) using the current printing word
+*
+def: print#
+ver: 2011.1
+stack: n -- 
+ctx: ~report
+desc: *
+	Prints the number using the current printing word
+*
+def: println
+ver: 2011.1
+stack: a n -- 
+ctx: ~report
+desc: *
+	Prints the string (a,n) using the current printing word, followed by a
+	newline
+*
+
+def: page
+ver: 2011.1
+stack: -- 
+ctx: ~report
+desc: *
+	Eject a page and increment the page number
+*
+
+def: page#
+ver: 2011.1
+stack: -- a n
+ctx: ~report
+desc: *
+	Current page number, as a string
+*
+
+def: bold
+ver: 2011.1
+stack: -- 
+ctx: ~report
+desc: *
+	Sets the output attribute to 'bold'
+*
+
+def: /bold
+ver: 2011.1
+stack: -- 
+ctx: ~report
+desc: *
+	Un-sets the 'bold' output attribute 
+*
+
+def: times
+ver: 2011.1
+stack: n <line> -- 
+ctx: ~report
+desc: *
+	Executes <line> n times.
+
+	Example:
+
+		10 times " hello, world" println
+*
+
+def: dowhile
+ver: 2011.1
+stack: <word> <line> -- 
+ctx: ~report
+desc: *
+	Executes <line> while <word> returns "true".
+
+	Example:
+
+		dowhile isok " hello, world" println
+*
+
+def: param$
+ver: 2011.1
+stack: n -- a n 
+ctx: ~report
+desc: *
+	Returns the n'th string parameter, which must have been set before
+	running the report, by "set-report-param$".  
+
+	Up to 5 string parameters may be set per report-run.
+*
+
+def: param#
+ver: 2011.1
+stack: n -- m
+ctx: ~report
+desc: *
+	Returns the n'th integer parameter, which must have been set before
+	running the report, by "set-report-param#".  
+
+	Up to 5 integer parameters may be set per report-run.
+*
+
+def: sql:
+ver: 2011.1
+stack: n <sql> -- 
+ctx: ~report
+desc: *
+	Define a SQL statement, numbered 'n'.  The rest of the line is saved
+	for later execution.
+
+	Up to 10 SQL statements may be set per report.
+*
+
+def: sql
+ver: 2011.1
+stack: n <forth> -- 
+ctx: ~report
+desc: *
+	Run the SQL statement numbered 'n'.  It will execute "<forth>" for
+	each row returned by the statement.
+
+	Up to 10 SQL statements may be set per report.
+*
+
+def: col
+ver: 2011.1
+stack: n  -- 
+ctx: ~report
+desc: *
+	During the execution phase of a SQL query, returns column "n" of the
+	result set, as a string.  Columns are numbered from "1".
+*
+
+def: bind#
+ver: 2011.1
+stack: pos n x -- 
+ctx: ~report
+desc: *
+	Bind the integer "n", to the SQL query number "x", in position "pos"
+*
+
+def: bind$
+ver: 2011.1
+stack: pos a n x -- 
+ctx: ~report
+desc: *
+	Bind the string "a,n", to the SQL query number "x", in position "pos"
+*
+
+
+related: print println print# page " bold /bold page#
+related: times dowhile
+related: param$ set-report-param$ param# set-report-param#
+related: sql: sql col bind$ bind#
+
+
+| words in context "~report-define", available when defining reports
+
+def: report:
+ver: 2011.1
+stack: <shortname> -- 
+ctx: ~report-define
+desc: *
+	Give the 'short name' of the report, which is a word without spaces,
+	by which the report may be referenced from "run-report-by-name"
+*
+
+def: description:
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Give a description of the report, which should be displayed, for
+	example, in a menu presented to the user.
+*
+
+def: RH
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Define a report-header line.
+*
+
+def: RF
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Define a report-footer line.
+*
+
+def: PH
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Define a page-header line.
+*
+
+def: PF
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Define a page-footer line.
+*
+
+def: DL
+ver: 2011.1
+stack: <line> -- 
+ctx: ~report-define
+desc: *
+	Define a detail line.
+*
+
+related: report: description: RH RF PH PF DL
+
+| report words for the runner of the report, in "~db"
+| init-report-from-file init-report-from-string
+| run-report-by-name run-report
+| set-report-param# set-report-param$
+
+def: run-report
+ver: 2011.1
+stack: db n -- 
+ctx: ~db
+desc: *
+	Run the report number 'n' in the database 'db'
+*
+
+def: run-report-by-name
+ver: 2011.1
+stack: db a n -- 
+ctx: ~db
+desc: *
+	Run the report with the short-name (a,n) in the database 'db'
+*
+
+def: init-report-from-string
+ver: 2011.1
+stack: db a n -- m
+ctx: ~db
+desc: *
+	Add a report, defined by (a,n), to the database "db", and return the
+	id number of the report (or -1 on failure).
+*
+
+def: init-report-from-file
+ver: 2011.1
+stack: db a n -- m
+ctx: ~db
+desc: *
+	Add a report, defined in the file name given (a,n), to the database
+	"db", and return the id number of the report (or -1 on failure).
+*
+
+def: set-report-param#
+ver: 2011.1
+stack: m n -- 
+ctx: ~db
+desc: *
+	Set an integer parameter "n" with value "m", for the next report
+	run.  One may set up to five integer parameters, which are referred
+	by in the report by "param#" 
+*
+
+def: set-report-param$
+ver: 2011.1
+stack: a m n -- 
+ctx: ~db
+desc: *
+	Set a string parameter "n" with value "a,m", for the next report
+	run.  One may set up to five string parameters, which are referred
+	by in the report by "param$" 
+*
+
+related: run-report run-report-by-name init-report-from-string init-report-from-file set-report-param# set-report-param$
+

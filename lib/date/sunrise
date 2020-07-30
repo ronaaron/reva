@@ -1,0 +1,277 @@
+| vim: ft=reva :
+| Calculate sunrise and sunset times for a given location and date
+| Based on code from Paul Schlyter: http://stjarnhimlen.se/comp/riset.html
+
+push~
+needs date/julian
+needs math/floats
+
+~floats ~sys ~ ~date
+
+context: ~sunrise
+~sunrise
+
+| minute offset from UTC: 
+variable tz
+| location's coordinates:
+fvariable	latitude	
+fvariable	longitude
+| sun's coordinates:
+fvariable	lon
+fvariable	r
+fvariable	RA
+fvariable	dec
+fvariable	x
+fvariable	y
+fvariable	z
+| orbital elements:
+fvariable	M
+fvariable	w
+fvariable	e
+fvariable	E
+fvariable	v
+| the date:
+fvariable	j2kd
+| start of epoch
+Dec 31 1999 gregorian>fixed constant 1JAN2k
+
+| Convert a 'degree/minute' pair of integers to a floating point value:
+: deg-min>f ( deg min -- f:x ) 
+	over 0 <if negate then
+	s>f 60.0 f/ s>f f+ ;
+| Add the timezone adjustment (minutes offset from UTC)
+: tzadjust ( hhmm -- hhmm' ) tz @ + ;
+| Angle reductions:
+|  to 0..360 degrees:
+: revolution ( f:x -- f:x' ) fdup 360.0 f/ ffloor 360.0 f* f- ; 
+|  to -180..+180 degrees:
+: rev180 ( f:x -- f:x') 
+	360.0 fover	| x 360 x
+	fover f/	| x 360 x/360
+	0.5 f+ 
+	ffloor
+	f* f- ;
+| Calculate GMST at 0h UTC
+: GMST0 ( f:day -- f:gmst0 )
+	0.985647352 f*
+	818.9874 f+
+	revolution ;
+| How many days since 1/1/2000 ?
+: julian2k ( mm dd yyyy -- f:days-since-1/1/2000 )
+	gregorian>fixed 1JAN2k - s>f ;
+| Calculate the coordinates of the sun at 0 UTC on the date given:
+: sunpos ( f:d -- )
+	| compute mean elements
+	fdup		| f: d d d 
+    | M = revolution( 356.0470 + 0.9856002585 * d );
+	0.9856002585 f* 356.0470 f+ revolution M f!
+    | w = 282.9404 + 4.70935E-5 * d;
+	4.70935E-5 f* 282.9404 f+  w f!  
+	fdup
+	| e = 0.016709 - 1.151E-9 * d;
+	-1.151E-9  f* 0.016709 f+ e f!
+    | Compute true longitude and radius vector 
+	| E = M + e * RADEG * sind(M) * ( 1.0 + e * cosd(M) );
+	M f@ fdup fdup	| f: M M M
+	cosd e f@ f* f1 f+
+	fswap sind rad>deg f*
+	e f@ f* f+ fdup  fdup  E f!
+	| x = cosd(E) - e;
+	cosd e f@ f- x f!
+    | y = sqrt( 1.0 - e*e ) * sind(E);
+	sind f1 e f@ sqr f- fsqrt f* fdup fdup y f!
+	| *r = sqrt( x*x + y*y );              /* Solar distance */
+	sqr x f@ sqr f+ fsqrt r f!
+    | v = atan2d( y, x );                  /* True anomaly */
+	x f@ atan2d fdup v f!
+    | *lon = v + w;                        /* True solar longitude */
+	w f@ f+ 
+	| correct if over:
+	fdup 360.0 f< not if
+		360.0 f-
+	then
+	lon f!
+	;
+
+| Calculate the sun's RA and dec at 0 UTC on the given day
+: sun_RA_dec ( f:d --  / RA dec r )
+	fdup	| f: d d
+	sunpos	| f: d / lon r
+    | Compute ecliptic rectangular coordinates (z=0) 
+	lon f@ cosd r f@ f* x f!
+	lon f@ sind r f@ f* y f!
+	| Compute obliquity of ecliptic (inclination of Earth's axis)
+	|   obl_ecl = 23.4393 - 3.563E-7 * d;
+	-3.563e-7 f* 23.4393 f+ fdup	
+    |  Convert to equatorial rectangular coordinates - x is unchanged
+    |  z = y * sind(obl_ecl);
+    |  y = y * cosd(obl_ecl);
+	sind y f@ f* z f!
+	cosd y f@ f* y f!
+    | Convert to spherical coordinates
+    |  *RA = atan2d( y, x );
+    |  *dec = atan2d( z, sqrt(x*x + y*y) );
+	y f@ x f@ atan2d RA f!
+	z f@ x f@ sqr y f@ sqr f+ fsqrt atan2d dec f!
+	;
+| Calculate sun 'rise' and 'set' on the given day.  The 'upper_limb' means to 
+| do the calculations based on the uppermost limb of the sun; if false, it 
+| will use the center of the sun's disk.  The 'altit' is the degrees of 
+| altitude to calculate the times for.
+|
+| Return values are the setting and rising times, in minutes from local 
+| midnight.  If one of those times is not available (e.g. the sun doesn't
+| set on that day) then the value is -1
+: sun-rise-set ( mm dd yyyy upper_limb f:altit -- sethhmm risehhmm )
+	| calculate julian_2000_d
+	>r julian2k r>
+	0.5 f+ longitude f@ 360.0 f/ f-			| upper_limb  f:altit j2kd
+	j2kd f!
+	| sun's RA/dec on this day:
+	j2kd f@ sun_RA_dec						| upper_limb  f:altit / RA dec
+    |  Do correction to upper limb, if necessary 
+	if
+		0.2666 r f@ f/ f-
+	then
+	| Compute the diurnal arc that the Sun traverses to reach 
+    | the specified altitude altit: 
+	| double cost;
+	| cost = ( sind(altit) - sind(latitude) * sind(dec) ) /
+	|        ( cosd(latitude) * cosd(dec) );
+	| NOTE: cost >=1 == sun always below altit (no rise)
+	|       cost <=-1 == sun always above altit (no set)
+	| t = acosd(cost)/15.0;   | The diurnal arc, hours 
+	sind latitude f@ sind dec f@ sind f* f-
+		latitude f@ cosd dec f@ cosd f* f/
+	fdup f1 fnegate f> not | is FTOS <= -1.0?
+	if | no set
+		false
+	else
+		true
+	then
+	fdup f1 f< not	| is FTOS>=1.0? 
+	if | no rise
+		false
+	else
+		true
+	then
+	| ( set? rise? -- )
+	acosd 15.0 f/
+    | rise = (12.0 - rev180(revolution( GMST0(julian_2000_d) + 
+	|			180.0 + longitude )- RA)/15.0)-t;
+	| f:t (diurnal arc, hours)
+	here f!	| save t to 'here'
+
+	12.0 j2kd f@ GMST0 180.0 f+ longitude f@ f+ revolution
+	RA f@ f- rev180 15.0 f/ f- here f@ f- fdup 
+	
+	if | rise?
+		60.0 f* f>s tzadjust | rise f!
+	else
+		fdrop -1
+	then
+	swap
+
+	if | set?
+		here f@ fdup f+ f+
+		60.0 f* f>s tzadjust | set f!
+	else
+		fdrop -1
+	then
+
+	swap fdrop
+	;
+exit~
+
+with~ ~sunrise
+
+: >longitude ( deg min -- ) deg-min>f fnegate longitude f!  ;
+: >latitude ( deg min -- ) deg-min>f latitude f!  ;
+: >timezone  ( offset-from-utc-minutes -- ) tz ! ;
+
+| sunrise and sunset
+: rise-set ( mm dd yyyy -- set rise )
+	true -35.0 60.0 f/ sun-rise-set ;
+: dawn-dusk ( mm dd yyyy -- set rise )
+	false -7.0 sun-rise-set ;
+
+pop~
+
+
+|||
+
+def: >longitude
+ctx: ~date
+stack:  deg min --
+ver: 9.0.6
+desc: =
+	Sets the longitude for which to calculate sunrise/sunset.  The
+	values must be specified as integral degrees and minutes.
+
+	Positive values are west, negative east of Greenwich.
+=
+
+def: >latitude
+ctx: ~date
+stack:  deg min --
+ver: 9.0.6
+desc: =
+	Sets the latitude for which to calculate sunrise/sunset.  The
+	values must be specified as integral degrees and minutes.
+	
+	Postive values are north, negative are south of the equator.
+=
+
+def: >timezone
+ctx: ~date
+stack:  mm --
+ver: 9.0.6
+desc: =
+	Sets the timezone offset in minutes from UTC for the location for
+	which to calculate sunrise/sunset.
+=
+
+def: rise-set
+ctx: ~date
+stack:  mm dd yyyy -- set rise
+ver: 9.0.6
+desc: =
+	For the location previously set, calculates the approximate time of
+	sunrise and sunset, as whole minutes from local midnight.  The
+	algorithm used is accurate to within two minutes for most locations.
+
+	If there is no sunrise (or sunset) for that location and date, then the
+	value "-1" is returned for that event.  This can only occur for locations
+	in the far North or South.
+=
+
+def: dawn-dusk
+ctx: ~date
+stack:  mm dd yyyy -- dusk dawn
+ver: 9.0.6
+desc: =
+	For the location previously set, calculates the approximate time of
+	dawn and dusk, as whole minutes from local midnight.  For the purposes of
+	this algorithm, both are defined as the sun being 7 degrees below the
+	horizon, which is about when the stars begin to be visible.
+	
+	See 'rise-set' for more details.
+=
+
+def: sun-rise-set
+ctx: ~sunrise
+stack:  mm dd yyyy upper-limb f:altit -- set rise
+ver: 9.0.6
+desc: =
+	This is the function used internally by 'rise-set' and 'dawn-dusk'.
+
+	"upper-limb" is a boolean; if true, the "rise" or "set" refers to the 
+	uppermost visible limb of the sun.  This is used for sunrise and sunset.
+	If it is false, then "rise" and "set" refer to the center of the sun's
+	disk.  This is used for "dawn" and "dusk" calculations.
+
+	The value "altit" put on the floating-point stack, is the number of 
+	degrees below the horizon.
+=
+
+related: >longitude >latitude >timezone rise-set dawn-dusk sun-rise-set

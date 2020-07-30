@@ -1,0 +1,21 @@
+<title>Mac OS/X Issues</title>
+
+<h1 align='center'>Running Reva on Mac OS/X</h1>
+<center>(For Linux issues, [./linux.wiki|go here])</center>
+
+In general, Reva runs perfectly well on Mac OS/X.  As with Linux, however, one needs to inform OS/X where the extra dynamic libraries which Reva is going to use are located.
+
+There are two environment variables which should be set: "PATH" and "DYLD_LIBRARY_PATH".  You should set the 'bin' directory of your Reva distribution to be in both the PATH and in DYLD_LIBRARY_PATH.  Note that you do <b>not</b> have to update the PATH if you don't want to, though it will make things more convenient.  But if you don't update the DYLD variable, then none of the included .dylib files will be found at runtime, which will severely limit your Reva experience.
+
+Besides this, you probably will want to create two symbolic links: 'reva' to point to your 'bin/mac/reva', and 'build' to point to 'bin/mac/build'.  As with PATH, both of these changes are optional.
+
+<h2>Getting IUP to work</h2>
+
+Starting from version 9.0.10, Reva includes OS/X versions of the IUP libraries.  However, they do <b>not</b> work "out of the box", which is unfortunate.  They require 'libgtk', which is a rather complex beast it turns out.  Here is how to get them on your machine (note there may be easier ways, but this works):
+
+  #  Install "fink" 0.29.10 or later
+  #  Run <tt>sudo ln -s /usr/X11/lib/libXdamage.1.1.0.dylib  /usr/X11/lib/libXdamage.1.0.0.dylib</tt> (at least, you need to on OS/X 10.5)
+  #  Run <tt>fink selfupdate</tt>
+  #  Run <tt>fink install gtk+2-shlibs</tt>
+
+There may be other things you have to do along the way -- for example, 'fink' didn't care for the version of 'python' I had, so I had to fake it out.  Sorry, I don't have better instructions for you at the moment.

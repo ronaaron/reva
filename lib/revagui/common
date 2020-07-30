@@ -1,0 +1,69 @@
+| vim: ft=reva :
+
+push~
+~ 
+context: ~revagui ~revagui
+
+LIN [IF] " librevagui.so" [THEN]
+MAC [IF] " librevagui.dylib" [THEN]
+WIN [IF] " revagui.dll" [THEN]
+lib revagui
+
+0 func: version
+0 vfunc: redraw
+2 func: add_idle  | (void (*cb) (void *),void *data)
+0 func: run
+
+2 vfunc: add_timeout
+2 vfunc: repeat_timeout
+1 vfunc: remove_timeout
+
+1 vfunc: destroy  | uses 'delete' on the widget, so C++ destructors are called
+1 func: getlabel	| w->label()
+2 vfunc: setlabel	| w->label(s)
+| get parent of widget:
+1 func: parent
+|  typedef void (Fl_Callback )(Fl_Widget*, void*);
+3 vfunc: setcallback	| (x,y,z)  x->callback(y,z)
+| get type of widget
+1 func: gettype | FL_WINDOW etc
+| get position of widget in its window
+1 func: getx
+1 func: gety
+| get size of widget 
+1 func: getwidth
+1 func: getheight
+| set size and position:
+3 vfunc: setsize
+3 vfunc: setpos
+: getpos ( w -- x y ) dup getx over gety ;
+| set alignment of label in widget:
+2 vfunc: label_align
+
+| tooltips:
+1 func: get_tooltip
+2 vfunc: set_tooltip
+
+| user data:
+1 func: get_userdata
+2 vfunc: set_userdata
+
+| visible?
+1 func: is_visible
+2 vfunc: show
+
+| colors
+2 vfunc: setcolor
+
+pop~
+
+|||
+
+def: revagui
+ctx: ~revagui
+stack: -- handle
+desc: =
+	Handle of the 'revagui' library, which provides all the GUI support via the
+	FLTK library, available here: http://www.fltk.org/
+=
+

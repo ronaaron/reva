@@ -1,0 +1,19 @@
+| Console application framework
+| vim: ft=reva :
+
+needs app/base
+needs os/console
+
+push~
+~
+~app
+
+::
+	pre-main
+	main
+	deinit-console
+	post-main
+	; is ~sys.appstart
+
+
+pop~

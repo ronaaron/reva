@@ -1,0 +1,49 @@
+| vim: ft=reva :
+| random number generator from Brodie "Starting Forth"
+push~
+
+needs math/doubles
+needs random/common
+
+~util
+~priv
+
+variable rnd
+
+~
+::  ( -- u ) rnd @  31421 *  6927 +  dup rnd ! ; is rand
+: rnd-seed ( n -- ) rnd ! ;
+
+
+: randomize 
+	os-rand rnd-seed
+	rand 100 mod 0do rand drop loop ;
+pop~
+|||
+
+def: rand
+stack: -- n
+ctx: ~
+desc: =
+	Get the next random number.
+
+	The generate always starts from a known place, so sequences will be
+	generated identically.  To get more 'random' behavior, use 'randomize' after
+	loading the library.
+=
+
+def: rnd-seed
+stack: n -- 
+ctx: ~
+desc: =
+	Use the value 'n' as the 'seed' for the random generator
+=
+
+def: randomize
+stack: --
+ctx: ~
+desc: =
+	Initialize the random number generator based on the time.
+=
+
+related: chooser choose[] choose random rnd-seed

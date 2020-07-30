@@ -1,0 +1,52 @@
+| vim: ft=reva :
+| "aux" stack words 
+push~
+
+~util ~priv
+2000 stack: (aux)
+~
+
+: >aux (aux) push ;
+: aux> (aux) pop ;
+: aux@ (aux) peek ;
+: auxN (aux) stack-size ;
+
+[IFTEST]
+10 test2: auxstack 1
+	4 5 >aux 10 >aux 
+	aux> ;
+	;
+5 test2: auxstack 2
+	aux> ;
+
+[THEN]
+
+pop~
+
+||| 
+def: >aux
+ctx: ~
+stack: n --
+desc: =
+	Put 'n' on the auxilliary stack
+=
+def: aux>
+ctx: ~
+stack: -- n
+desc: =
+	Pop TOS from the auxilliary stack
+=
+def: aux@
+ctx: ~
+stack: -- n
+desc: =
+	Peek at TOS from the auxilliary stack
+=
+def: auxN
+ctx: ~
+stack: -- n
+desc: =
+	Get number of items on auxilliary stack
+=
+
+related: aux@ aux> >aux stack: auxN

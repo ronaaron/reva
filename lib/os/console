@@ -1,0 +1,380 @@
+| vim: ft=reva :
+| Console I/O words
+
+push~
+~strings ~util ~os
+
+context: ~curses
+~curses
+
+
+WIN not constant NCURSES   | are we using ncurses?
+
+LIN [IF] " libncurses.so" [THEN]
+MAC [IF] " libncurses.dylib" [THEN]
+WIN [IF] " pdcurses.dll" [THEN] 
+lib curses
+1 vfunc: addch          | char
+1 vfunc: attron
+1 vfunc: attroff
+0 vfunc: clear
+   data: COLORS
+   data: COLS
+2 vfunc: assume_default_colors
+1 vfunc: curs_set		| int
+0 vfunc: endwin
+3 vfunc: init_pair		| int
+0  func: initscr	    | WINDOW *
+2 vfunc: keypad
+   data: LINES
+2 vfunc: move
+3 vfunc: mvaddch        | x y char
+| 3 vfunc: mvprintw
+4  func: newwin			| WINDOW *
+2 vfunc: nodelay
+0 vfunc: noecho
+| 1 vfunc: printw			| (char*)
+0 vfunc: raw
+0 vfunc: refresh
+2 vfunc: resize_term
+1 vfunc: scrl
+1 vfunc: scroll
+2 vfunc: scrollok
+2 vfunc: setscrreg
+0 vfunc: standend
+0 vfunc: start_color
+   data: stdscr
+1  func: wgetch			| int
+| 2 vfunc: wprintw		| (window*,char*)
+0	func: curses_version
+2 vfunc: color_set
+2 vfunc: addnstr
+4 vfunc: mvaddnstr
+
+
+| attribute and color structs
+$00000000 constant A_NORMAL	
+NCURSES [IF]
+$00020000 constant A_UNDERLINE
+$00040000 constant A_REVERSE
+$00080000 constant A_BLINK
+$00200000 constant A_BOLD
+$00800000 constant A_INVIS
+[ELSE]
+$00100000 constant A_UNDERLINE	
+$00200000 constant A_REVERSE	
+$00400000 constant A_BLINK	        
+$00800000 constant A_BOLD		
+$00080000 constant A_INVIS	        
+[THEN]
+
+| take over the standard IO words:
+: emit2  addch ;
+: type2  addnstr ; | zt printw ;
+: ekey2  stdscr wgetch ;
+variable keystroke
+: dobs keystroke @ 0; keystroke -- drop ~sys.tp -- 8 emit space 8 emit ;
+: key2
+    ekey2
+    case
+       3 of ctrl-c endof
+       127 of dobs endof | fix for Linux console
+       8 of dobs endof
+       13 of 10 dup emit keystroke off ;; endof
+       258 of 1 scrl endof
+       259 of -1 scrl endof
+       dup emit keystroke ++ ;; | return to caller, not a special key
+	endcase
+   refresh key2 ;
+: key?2  stdscr true nodelay ekey2 -1 <> stdscr false nodelay ;
+
+5 constant #VECTORS
+create io-vectors
+	' emit ,
+	' type ,
+	' ekey , 
+	' key ,
+    ' key? ,
+
+create new-vectors
+	' emit2 ,
+	' type2 ,
+	' ekey2 ,
+	' key2 ,
+    ' key?2 ,
+
+create old-vectors #VECTORS cells allot
+: unhook-io
+	#VECTORS 0do
+		i cells old-vectors + @
+		i cells io-vectors + @ !
+	loop
+	;
+: hook-io
+	#VECTORS 0do
+		i cells io-vectors + @ @
+		i cells old-vectors + !
+	loop 
+	#VECTORS 0do
+		i cells new-vectors + @ 
+		i cells io-vectors + @ !
+	loop 
+	;
+
+exit~
+with~ ~curses
+| I don't see much sence in increasing all color constants by one.
+| It's error-prone and ignores the logic behind the constants. 
+| So I use the unmodified values from the library. -jsv-
+NCURSES [IF] | ncurses uses RGB
+1 constant red 
+2 constant green 
+4 constant blue 
+[ELSE]       | pdcurses on windows uses BGR
+1 constant blue 
+2 constant green 
+4 constant red 
+[THEN]
+0 constant black
+7 constant white
+red   green or constant yellow
+red   blue  or constant magenta
+green blue  or constant cyan
+| -1 constant default  -- not useful right now
+
+2variable (fg-bg) 
+
+: lines  LINES ;
+: columns  COLS ;
+: colors COLORS ;
+
+| I do not like initializing so many useless pairs 
+| and still lacking many useful (like 'on default')
+| ... but we'll do a quick fix first.
+| Devising a better lexicon can wait.  -jsv-
+: init-colors 
+	0
+	8 0do
+	    8 0do
+		1+ dup i j       | init every possible 
+		init_pair        | color combination
+	    loop
+	loop drop ;
+: (init-console)
+    | initialize curses library: 
+    initscr
+    start_color 
+    white black assume_default_colors
+    noecho raw
+    stdscr true keypad
+    stdscr true scrollok
+    0 lines setscrreg
+	['] init-colors catch drop
+	;
+: init-console
+|	['] (init-console) catch if
+|		." init-console failure" cr .funcs cr
+|	then
+	(init-console)
+	| hook i/o words
+	hook-io
+	;
+::
+	 unhook-io
+	| uninitialize curses library
+	 endwin
+	 ['] noop is deinit-console
+	; is  deinit-console
+
+| misc
+: consize  swap resize_term 0 lines setscrreg ;
+: xyemit  -rot swap rot mvaddch ;
+: xytype  2swap swap 2swap  mvaddnstr ;
+: scroll  stdscr scroll ;
+: refresh  prior refresh ;
+
+
+| cursor and positioning
+2variable (pos)
+: cursor  curs_set ;
+: gotoxy  swap move ;
+: getpos  stdscr dup cell+ @ swap @ ;
+: pos@  (pos) 2@ ;
+: savepos  getpos (pos) 2! ;
+: restorepos  pos@ gotoxy ;
+
+
+| colors and attributes
+defer normal
+:: standend ; is normal
+
+
+: fg  (fg-bg) 2@ nip | fall into 'color'
+: color ( fcolor bcolor --)
+	2dup (fg-bg) 2!
+        8 * + 1+ 0 color_set ;
+: bg  (fg-bg) 2@ drop swap color ;
+| : cls  clear ;
+: cls (fg-bg) 2@ color lines columns * spaces 0 0 gotoxy ;
+
+: bold  A_BOLD attron ;
+: unbold  A_BOLD attroff ;
+: blink  A_BLINK attron ;
+: bright  blink ;
+: dim  A_BLINK attroff ;
+: reverse  A_REVERSE attron ;
+: underscore  A_UNDERLINE attron ;
+: concealed  A_INVIS attron ;
+
+| still OS-specific...
+os [IF]
+
+: fullscreen ( n -- ) drop ; | TODO
+: title ( a n -- ) 2drop ; | TODO
+
+[ELSE]
+
+k32 drop
+   1 vfunc: SetConsoleTitleA
+   3 vfunc: SetConsoleDisplayMode
+
+: fullscreen  if 1 else 2 then stdout swap scratch SetConsoleDisplayMode ;
+: title  zt SetConsoleTitleA ;
+
+[THEN]
+
+~sys
+' init-console onstartup
+' deinit-console @ onexit
+exit~
+
+init-console
+| The following is required to set reasonable defaults in (fg-bg).
+| I'd prefer to use the terminal defaults instead but they may be
+| outside of the range that we can handle.  -jsv -
+white black color
+
+pop~
+
+|||
+def: bold
+ctx: ~os
+stack: --
+desc: =
+	Bold the foreground colour.
+=
+def: unbold
+ctx: ~os
+stack: --
+desc: =
+	Unbold the foreground colour (if bold).
+=
+def: bright
+ctx: ~os
+stack: --
+desc: =
+	Brighten the background colour.
+=
+def: dim
+ctx: ~os
+stack: --
+desc: =
+	Dim the background colour (if bright).
+=
+def: color
+ctx: ~os
+stack: --
+desc: =
+    Available console colors are black, blue, green, cyan, red,
+    magenta, yellow and white. One may set the current color by
+    typing, for example:
+       ok> red onGreen
+
+    Note that both foreground and background must be specified.
+=
+def: normal
+ctx: ~os
+stack: --
+desc: =
+	A deferred word, currently sets the screen to white text on a
+    black background.
+=
+def: gotoxy
+ctx: ~os
+stack: x y --
+desc: =
+	Place the cursor at coordinate x,y on the screen.
+=
+def: pos@
+ctx: ~os
+stack: -- x y
+desc: =
+	Return the x,y coordinate stored by savepos.
+=
+def: getpos
+ctx: ~os
+stack: -- x y
+desc: =
+	Return the cursor's current x,y coordinate.
+=
+def: savepos
+ctx: ~os
+stack: --
+desc: =
+	Save the cursor's current x,y coordinate.
+=
+def: restorepos
+ctx: ~os
+stack: --
+desc: =
+	Restore the cursor to the x,y coordinate stored by 'savepos'.
+=
+def: cls
+ctx: ~os
+stack: --
+desc: =
+	Clear the screen and place the cursor at 0,0.
+=
+def: fullscreen
+ctx: ~os
+stack: t --
+desc: =
+	'true' sets to fullscreen mode, 'false' to a window. Currently
+    Windows only.
+=
+def: cursor
+ctx: ~os
+stack: 0 | 1 | 2 --
+desc: =
+    Set the cursor's size, with 0 being invisible, 1 normal, and 2
+    large.
+=
+def: title
+ctx: ~os
+stack: a u --
+desc: =
+	Set the title of the console window, for example,
+            ok> " My Title" title
+
+    Currently Windows only.
+=
+def: consize
+ctx: ~os
+stack: cols rows --
+desc: =
+	Resize the console window.
+=
+def: xyemit
+ctx: ~os
+stack: x y char --
+desc: =
+	Move to screen coordinate x,y and print the character.
+=
+def: xytype
+ctx: ~os
+stack: x y a u --
+desc: =
+	Move to screen coordinate x,y and type the string.
+=
+related: console-io color bold unbold bright dim normal gotoxy getpos savepos restorepos pos@ cls space spaces cursor emit type type_ xyemit xytype fullscreen title consize
+

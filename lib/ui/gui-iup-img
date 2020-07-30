@@ -1,0 +1,156 @@
+| vim: ft=reva :
+| iup image library
+| this library allows accessing the standard images
+| (for example for toolbar buttons) that are delivered
+| with IUP (more precisely with the IUP image library).
+|
+| Author: Danny Reinhold / Reinhold Software Services
+| Reva's license terms also apply to this file.
+|
+| Please read the tecgraf copyright notice in ui/gui-iup
+| which also applies to the IUP image library!
+
+push~
+needs ui/iup
+~util
+~iup
+
+| iup drop
+| We will access these functions.
+| Please don't use them directly in your forth code.
+0 func: IupImageLibOpen
+
+exit~
+
+~iup
+
+
+|  ====================== Bitmaps 16x16 ===========================================
+
+: img-text           " IUP_FileText"          ;
+: img-new            " IUP_FileNew"           ;  | no exact equivalent in IUP 3.0
+: img-new-sprite     " IUP_FileNew"           ;
+: img-open           " IUP_FileOpen"          ;
+: img-close          " IUP_FileClose"         ;
+: img-close-all      " IUP_FileCloseAll"      ;
+: img-save           " IUP_FileSave"          ;
+: img-cut            " IUP_EditCut"           ;
+: img-copy           " IUP_EditCopy"          ;
+: img-paste          " IUP_EditPaste"         ;
+: img-print          " IUP_Print"             ;
+: img-preview        " IUP_PrintPreview"      ;
+: img-search         " IUP_EditFind"          ;
+: img-help           " IUP_MessageHelp"       ;
+: img-redo           " IUP_EditRedo"          ;
+: img-undo           " IUP_EditUndo"          ;
+| : img-one-left       " IUP_IMGBUT_ONELEFT"       ;        | deprecated in IUP 3.0
+| : img-one-right      " IUP_IMGBUT_ONERIGHT"      ;        | deprecated in IUP 3.0
+| : img-ten-left       " IUP_IMGBUT_TENLEFT"       ;        | deprecated in IUP 3.0
+| : img-ten-right      " IUP_IMGBUT_TENRIGHT"      ;        | deprecated in IUP 3.0 
+: img-zoom           " IUP_Zoom"              ;
+: img-zoom-in        " IUP_ZoomIn"            ;
+: img-zoom-out       " IUP_ZoomOut"           ;
+: img-no-zoom        " IUP_ZoomActualSize"    ;
+| : img-yz             " IUP_IMGBUT_YZ"            ;        | deprecated in IUP 3.0
+| : img-xy             " IUP_IMGBUT_XY"            ;        | deprecated in IUP 3.0
+| : img-xz             " IUP_IMGBUT_XZ"            ;        | deprecated in IUP 3.0
+| : img-fit            " IUP_IMGBUT_FIT"           ;        | deprecated in IUP 3.0
+| : img-axis           " IUP_IMGBUT_AXIS"          ;        | deprecated in IUP 3.0
+| : img-cube           " IUP_IMGBUT_CUBE"          ;        | deprecated in IUP 3.0 
+: img-tile           " IUP_WindowsTile"           ;
+: img-cascade        " IUP_WindowsCascade"        ;
+: img-stop           " IUP_MediaStop"             ;
+: img-play           " IUP_MediaPlay"             ;
+: img-previous       " IUP_MediaGoToBegin"        ;
+: img-next           " IUP_MediaGoToEnd"          ;
+: img-play-backward  " IUP_MediaReverse"          ;
+: img-forward        " IUP_MediaForward"          ;
+: img-rewind         " IUP_MediaRewind"           ;
+: img-green-left     " IUP_ArrowLeft"             ;
+: img-green-right    " IUP_ArrowRight"            ;
+: img-green-up       " IUP_ArrowUp"               ;
+: img-green-down     " IUP_ArrowDown"             ;
+: img-configure      " IUP_ToolsSettings"         ;
+| : img-video          " IUP_IMGBUT_VIDEO"        ;     | see img-dev-video 
+| : img-single-left    " IUP_IMGSML_SINGLELEFT"    ;        | deprecated in IUP 3.0
+| : img-double-left    " IUP_IMGSML_DOUBLELEFT"    ;        | deprecated in IUP 3.0
+| : img-single-right   " IUP_IMGSML_SINGLERIGHT"   ;        | deprecated in IUP 3.0
+| : img-double-right   " IUP_IMGSML_DOUBLERIGHT"   ;        | deprecated in IUP 3.0
+: img-down           " IUP_ArrowDown"          ;
+: img-left           " IUP_ArrowLeft"          ;
+: img-right          " IUP_ArrowRight"         ;
+: img-up             " IUP_ArrowUp"            ;
+
+: img-cancel             " IUP_ActionCancel"          ;   | new in IUP 3.0
+: img-ok                 " IUP_ActionOk"              ;   | new in IUP 3.0
+: img-erase              " IUP_EditErase"             ;   | new in IUP 3.0
+: img-save-all           " IUP_FileSaveAll"           ;   | new in IUP 3.0
+: img-file-properties    " IUP_FileProperties"        ;   | new in IUP 3.0
+: img-fontbold           " IUP_FontBold"              ;   | new in IUP 3.0
+: img-fontitalic         " IUP_FontItalic"            ;   | new in IUP 3.0
+: img-fontdialog         " IUP_FontDialog"            ;   | new in IUP 3.0
+: img-pause              " IUP_MediaPause"            ;   | new in IUP 3.0
+: img-record             " IUP_MediaRecord"           ;   | new in IUP 3.0
+: img-error              " IUP_MessageError"          ;   | new in IUP 3.0
+: img-info               " IUP_MessageInfo"           ;   | new in IUP 3.0
+: img-home               " IUP_NavigateHome"          ;   | new in IUP 3.0
+: img-refresh            " IUP_NavigateRefresh"       ;   | new in IUP 3.0
+: img-toolscolor         " IUP_ToolsColor"            ;   | new in IUP 3.0
+: img-tools-sortascent   " IUP_ToolsSortAscent"       ;   | new in IUP 3.0
+: img-tools-sortdescent  " IUP_ToolsSortDescent"      ;   | new in IUP 3.0
+: img-fullscreen         " IUP_ViewFullScreen"        ;   | new in IUP 3.0
+: img-zooomselect        " IUP_ZoomSelection"         ;   | new in IUP 3.0
+
+| ======================== icons height 32  various widths ====================
+
+
+: img-label-tecgraf       " IUP_Tecgraf"        ;
+: img-label-pucrio        " IUP_PUC-Rio"        ;   | new in IUP 3.0
+: img-label-br            " IUP_BR"             ;
+: img-label-lua           " IUP_Lua"            ;
+: img-label-tecgrafpucrio  " IUP_TecgrafPUC-Rio"  ;
+: img-label-petrobras     " IUP_Petrobras"      ;
+
+
+| ======================== height 48  various widths  ======================
+
+: img-logo-tecgrag          " IUP_LogoTecgraf"              ;   | new in IUP 3.0
+: img-logo-pucrio           " IUP_LogoPUC-Rio"              ;   | new in IUP 3.0
+: img-logo-br               " IUP_LogoBR"                   ;   | new in IUP 3.0
+: img-logo-lua              " IUP_LogoLua"                  ;   | new in IUP 3.0
+: img-logo-tecgragpucrio    " IUP_LogoTecgrafPUC-Rio"       ;   | new in IUP 3.0
+: img-logo-petrobras        " IUP_LogoPetrobras"            ;   | new in IUP 3.0
+
+
+| ===================== size 48x48 32bpp =================================
+
+
+: img-msg-security      " IUP_LogoMessageSecurity"  ;       | new in IUP 3.0
+: img-msg-warning       " IUP_LogoMessageWarning"   ;       | new in IUP 3.0
+: img-msg-info          " IUP_LogoMessageInfo"      ;       | new in IUP 3.0
+: img-msg-error         " IUP_LogoMessageError"     ;       | new in IUP 3.0
+
+: img-dev-camera            " IUP_DeviceCamera"     ;       |  new in IUP 3.0
+: img-dev-cd                " IUP_DeviceCD"         ;       |  new in IUP 3.0
+: img-dev-cellphone         " IUP_DeviceCellPhone"  ;       |  new in IUP 3.0
+: img-dev-computer          " IUP_DeviceComputer"   ;       |  new in IUP 3.0
+: img-dev-fax               " IUP_DeviceFax"        ;       |  new in IUP 3.0
+: img-dev-mp3               " IUP_DeviceMP3"        ;       |  new in IUP 3.0
+: img-dev-pda               " IUP_DevicePDA"        ;       |  new in IUP 3.0
+: img-dev-printer           " IUP_DevicePrinter"    ;       |  new in IUP 3.0
+: img-dev-scanner           " IUP_DeviceScanner"    ;       |  new in IUP 3.0
+: img-dev-sound             " IUP_DeviceSound"      ;       |  new in IUP 3.0
+: img-dev-video             " IUP_DeviceVideo"      ;       |  new in IUP 3.0
+
+
+
+
+
+
+~iup
+IupImageLibOpen
+:: IupImageLibOpen ;  ~sys.onstartup
+
+pop~
+
+||| 

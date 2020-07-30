@@ -1,0 +1,215 @@
+| vim: ft=reva :
+
+push~
+~util ~sys ~strings ~io
+needs util/classes
+needs db/sqlite
+~db
+~help
+0 value helpdb
+0 value desc-sql
+0 value also-sql
+
+create help$$ 1024 allot
+: got-desc 0 sql_pcol_text help$$ 1020 max lplace true ;
+: help$ ( a n -- a n )
+	help$$ off
+ 	desc-sql 1 2swap sql_bind_string
+ 	desc-sql ['] got-desc sql_pexec
+ 	help$$ lcount
+	;
+
+create lang	16 allot
+: lang: parsews lang place ;
+create theword  200 allot
+: nohelp2 cr " help-nohelp" help$ type_ theword count 2dup type cr 
+	find 0if 2drop " help-notdefined" help$ type_ cr then
+	;
+variable found
+variable lib#
+: doctx 
+	" help-contexts" help$ type cr
+	helpdb " select ctx from help group by ctx order by ctx" 
+	{ 0 sql_getcol$ type_ false } sql_fetch drop cr ;
+
+: dolibs
+	lib# off
+	" help-libs" help$ type cr 4 spaces
+	helpdb " select name from libs order by name" 
+		{
+			0 sql_getcol$ 4 /string dup 1+ lib# +! type_ lib# @ 70 min 60 >if
+			lib# off cr 5 spaces then false 
+		} sql_fetch drop
+	cr 
+	;
+: dolangs
+	" languages1" help$ type cr 5 spaces
+	helpdb " select lang from lang group by lang order by lang"
+		{ 0 sql_getcol$ type_ } sql_fetch drop cr
+
+	" languages2" help$ type cr
+	;
+: (gethelp) 
+	found on
+	theword ctype space
+	0 sql_getcol$ dup 0if 2drop else
+	'( emit space type_ ') emit space
+	then
+	| orig:
+	| get other information about the word
+	
+	3 sql_getcol$ find
+	?dup if
+		| ctx
+		theword count rot in~ ~sys find-word
+		| 0 | a n dict -1
+		if classof type then
+	then
+
+	cr
+	" help-context:" help$ type_ 3 sql_getcol$ type cr
+	" help-source:" help$ type_
+		" select name from orig where ix=" pad place
+		4 sql_getcol$ pad +place
+		helpdb pad count sql_fetch$ type cr
+	5 sql_getcol$ dup 0if 2drop else type_ " help-only:" help$ type cr then
+	6 sql_getcol$ dup 0if 2drop else " help-version:" help$ type_ type cr then
+	| the description:
+	lang c@ if
+		" select desc from lang where lang='" pad place
+		lang count pad +place
+		" ' and ix=" pad +place
+		2 sql_getcol$ pad +place
+		helpdb pad count sql_fetch$
+		dup if type cr else 1 sql_getcol$ type cr then
+	else
+		1 sql_getcol$ type cr
+	then
+
+	also-sql 1 2 sql_getcol$ sql_bind_string
+ 	also-sql { ." see also: " 0 sql_pcol_text  type true } sql_pexec 
+	cr false
+	;
+
+: helplib ( a n -- )
+	" select word from help where lib in (select ix from libs where name='lib/"
+	scratch lplace 
+	quote' scratch +lplace
+	" ') order by word" scratch +lplace
+	helpdb scratch lcount { 0 sql_getcol$ type_ found ++ false } sql_fetch drop
+	found @ if cr found ? " help-total-lib" type then
+	;
+: help~ ( a n  -- )
+	" select word from help where ctx='" pad place
+	quote' pad +place " ' order by word" pad +place
+	helpdb pad count { 0 sql_getcol$ type_ found ++ false } sql_fetch drop
+	found @ if cr found ? " help-total-ctx" help$ type then
+	;
+: gethelp ( a n -- )
+	2dup " libraries" cmp 0if 2drop dolibs ;then
+	2dup " contexts" cmp 0if 2drop doctx ;then
+	2dup " languages" cmp 0if 2drop dolangs ;then
+	found off
+	dup 0if 2drop " defaulthelp" then
+
+	2dup theword place
+	|          0    1    2  3   4   5  6
+	" select stack,desc,ix,ctx,orig,os,ver from help where word='" pad place
+	quote' pad +place
+	" '" pad +place
+	helpdb pad count ['] (gethelp) sql_fetch
+	found @ 0if 
+		theword count help~
+		found @ 0if
+			theword count helplib
+			found @ 0if nohelp2 then
+		then
+	then
+	drop
+	;
+
+: (grephelp) 0 sql_getcol$ type space false ;
+: (grephelp2) 0 sql_getcol$ type '. emit 1 sql_getcol$ type space false ;
+
+create grepbuf 256 allot
+: grephelp ( a n -- )
+	" '%" grepbuf place
+	quote' grepbuf +place
+	" %'" grepbuf +place
+
+	" select word from help where word like " pad place
+		grepbuf count pad +place
+
+	"  or desc like " pad +place
+		grepbuf count pad +place
+	helpdb pad count ['] (grephelp) sql_fetch drop
+	;
+~
+: help~ ( <nam> -- ) parsews
+	" '%" grepbuf place
+	quote' grepbuf +place
+	" %'" grepbuf +place
+
+	" select ctx,word from help where word like " pad place
+		grepbuf count pad +place
+	"  order by ctx,word" pad +place
+	helpdb pad count ['] (grephelp2) sql_fetch drop
+	;
+exit~
+	
+: showhelp2 ;
+:: parsews gethelp ; is help
+:: parsews grephelp ; is help/
+: starthelp
+	helpdir pad place " help.db" pad +place  
+	pad count sql_open to helpdb
+
+	helpdb " select desc from help where word=:1" sql_prepare to desc-sql
+	helpdb " select group_concat(word,' ') from help where ix in (select other from also where ix=:1) order by word" sql_prepare to also-sql
+
+	~reva.revalang lang place
+
+	['] nohelp 0if
+		['] nohelp2 is nohelp
+		['] showhelp2 is showhelp
+	then
+	;
+starthelp
+
+pop~
+|||
+def: starthelp
+ctx: ~help
+stack: --
+desc: -
+	Initialize the help system.
+-
+def: gethelp
+ctx: ~help
+stack: a n -- 
+desc: -
+	This is the word actually called by "help".  It knows how to query the help
+	database for the word (a,n).
+-
+def: lang:
+ctx: ~help
+stack: <text> -- 
+ver: 7.0.9
+desc: -
+	Sets the language for the help to <text>.  For example:
+	   help de
+
+	will use the German help text.  
+-
+
+def: help~
+ctx: ~
+stack: <text> -- 
+ver: 7.0.10
+desc: =
+	Finds all words containing "<text>" as some part of the word, for which help
+	has been defined.  Displays them in dotted-context format.   That is, the
+	word "@" in the context "~" is displayed as "~.@"
+=
+
+related: lang: gethelp help help~

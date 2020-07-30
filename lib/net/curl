@@ -1,0 +1,28 @@
+| vim: ft=reva
+|
+| Wrapper arounc cURL library
+
+push~
+
+context: ~curl
+~ ~curl
+
+LIN [IF] " libcurl.so.4" [THEN]
+WIN [IF] " curl.dll" [THEN]
+lib curl
+curl drop
+
+0 func: curl_version
+0 func: curl_easy_init
+1 vfunc: curl_easy_cleanup
+1 vfunc: curl_easy_reset
+3 func: curl_easy_setopt
+
+|||
+def: curl_version
+stack:  -- z
+ctx: ~curl
+ver: 2011.1
+desc: =
+	Return version of cURL library in use
+=

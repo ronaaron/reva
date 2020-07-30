@@ -1,0 +1,69 @@
+| Basic application framework
+| : vim: ft=reva :
+
+push~
+~ 
+
+context: ~app
+~util ~sys 
+
+~app
+
+| Application initialization and de-initialization:
+defer pre-main
+defer post-main
+
+| User-defined main entry:
+defer main			' main @ constant (main)
+
+| after-save hook:
+defer post-save
+
+| actual main entry:
+::
+	pre-main
+	main
+	post-main
+	; is appstart
+
+~util
+| override the default 'save'
+: save ( <name> -- )
+	['] main @ (main) =if
+		." You forgot to override 'main', not saving anything" cr
+	;then
+
+	parsews makeexename 2dup (save)
+	post-save
+	." Saved application as: " type cr bye
+	;
+
+pop~
+
+|||
+
+def: main
+ver: 2000.1
+stack: --
+ctx: ~app
+desc: *
+	Main entry point of a 'generic' application
+*
+
+def: pre-main
+ver: 2000.1
+stack: --
+ctx: ~app
+desc: *
+	Gets called before 'main'.  Used for application initialization
+*
+
+def: post-main
+ver: 2000.1
+stack: --
+ctx: ~app
+desc: *
+	Gets called after 'main'.  Used for application teardown
+*
+
+related: pre-main post-main main appstart post-save save

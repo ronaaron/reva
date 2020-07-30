@@ -1,0 +1,33 @@
+<title>Libraries</title>
+
+A "library" in Reva is a specially-named file containing Reva code, located in a particular place.  It may contain any Reva code whatsoever; however, the libraries provided by Reva are grouped according to function.
+
+To begin with, almost all Reva libraries are in subdirectories of the "lib" directory (next to the "bin" directory, just off the topmost Reva directory).  For example, the library "lib/math/doubles" contains code for doing double-cell math.
+
+<h2>Using libraries</h2>
+
+In order to use a library, you simply "need" it.  For example:
+
+<pre>
+needs math/doubles
+</pre>
+
+will cause Reva to load the file in "lib/math/doubles".  Now every word defined in that library is available to you.  
+
+If you want to know what words are defined in a library, you can of course load that library file in your favorite text-editor.  However, that can be confusing; so for the majority of libraries, simply asking for help on the library is illuminating:
+
+<pre>
+help math/doubles
+</pre>
+
+You may also get help on what libraries are available:
+
+<pre>
+help libraries
+</pre>
+
+Or, you can see what libraries have been "need"ed already:
+
+<pre>
+.needs
+</pre>

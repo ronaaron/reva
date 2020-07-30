@@ -1,0 +1,38 @@
+| Output format: ELF
+| vim: ft=reva :
+
+push~
+needs asm/common
+
+~asm
+~asmpriv
+
+variable exe-header-start
+variable pheader-start
+variable code-start
+variable data-start
+variable udata-start
+
+: pe-header
+	; 
+	
+
+: pe-exe-save ( a n -- )
+	; 
+: pe-code-start
+	;
+:: ; is (code-end)
+:: align ; is (data-start)
+:: ; is (data-end)
+:: align ; is (udata-start)
+:: ; is (udata-end)
+:: ; is (exe-set-entry)
+
+~asm
+: pe-format
+	['] pe-header is (exe-header)
+	['] pe-code-start is (code-start)
+	['] pe-exe-save is (exe-save)
+	;
+
+pop~

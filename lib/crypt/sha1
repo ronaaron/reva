@@ -1,0 +1,339 @@
+| vim: ft=reva :
+| sha1 routine originally from Wil Baden
+| ported to Reva by Ron
+| Original is here:  http://home.earthlink.net/~neilbawd/sha1.txt
+
+push~
+needs math/doubles
+needs string/misc
+~doubles
+
+~priv
+: 5lrot inline{ C1 C0 05 } ;inline
+: 30lrot inline{ C1 C0 1E } ;inline
+: 1lrot inline{ D1 C0 } ;inline
+
+| now: Message-Block + 16 cells is the digest
+create Message-Block   23 cells allot
+Message-Block 16 cells + value Message-Digest
+
+
+2variable SIZE
+
+64 constant BSIZE 
+: 15and inline{ 83 e0 0f } ;inline
+: 511and inline{ 25 FF 01 00 00 } ;inline
+
+0 variable, sb0
+$80 variable, sb80
+
+: MB+ cells Message-Block + ;
+: MB@ MB+ @ ;
+: bswap@ inline{ 89 C3 8B 00 0F C8 89 03 } ;
+: BLK0              ( i -- x )
+        MB+			| mb
+		bswap@
+|		dup @		| mb mb@ 
+|		bswap		| mb mb@' 
+|		tuck		| mb@' mb mb@'
+|		swap !		| mb@'
+		;
+
+: BLK               ( i -- x )
+    dup  13 + 15and MB@
+    over  8 + 15and MB@  xor
+    over  2 + 15and MB@  xor
+    over      15and MB@  xor
+    1lrot  |  This operation was added for SHA-1.
+    dup rot  15and MB+ ! ;
+
+| : F                 ( d c b -- bc or b'd ) dup >r and swap r> invert and or ;
+: F inline{ 8D 76 FC 89 06 8B 46 04 89 C3 F7 D3 23 5E 0C 23 46 
+        08 09 D8 05 99 79 82 5A } 
+		swap ; 
+| : G                 ( d c b -- bc or bd or cd ) 2dup and >r  or and r>  or ;
+: G  inline{ 8D 76 FC 89 06 8B 46 04 89 C3 23 5E 08 23 46 0C 09 
+        D8 8B 5E 08 23 5E 0C 09 D8 05 DC BC 1B 8F }
+	swap ;
+
+| : H                 ( d c b -- d xor c xor b ) xor xor ;
+: H1 inline{ 8D 76 FC 89 06 8B 46 04 33 46 08 33 46 0C 05 a1 eb d9 6e } 
+	swap ; 
+: H2 inline{ 8D 76 FC 89 06 8B 46 04 33 46 08 33 46 0C 
+		05 d6 c1 62 ca } 
+	swap ; 
+
+: roll5 inline{ 8B 5E 0C 89 5E 10 8B 5E 08 89 5E 0C 8B 5E 04 C1 C3 
+        1E 89 5E 08 8B 1E 89 5E 04 8D 76 04 } ; 
+
+: MIX               ( e d c b temp a m -- e d c b a )
+	over 5lrot +		| e d c b temp a (m+a<<<5)
+|	rot >r				| e d c b a m (r:temp)
+    |  temp = temp + (m + (a <<< 5)) + e
+|	over 5lrot +		| e d c b a (m+a<<<5) (r:temp)
+|	5 pick +			| e d c b a x 
+	6 pick +			| e d c b temp a x 
+	| e d c b a t x+t
+	| r> +			| e d c b a temp
+	rot +
+	roll5
+    |  e = d
+    |  d = c
+    |  c = (b <<< 30)
+    |  b = a
+    |  a = temp
+    ;
+
+: Fetch-Message-Digest   ( -- e d c b a )
+	| Message-Block 20 cells +
+	Message-Digest 4cell+
+	5 0do
+		dup @ swap cell-
+	loop drop ;
+
+: Add-to-Message-Digest  ( e d c b a -- )
+	| Message-Block 16 cells +
+	Message-Digest
+	5 0do
+		tuck +! cell+
+	loop drop ;
+
+: TRANSFORM         ( -- )
+    Fetch-Message-Digest    ( e d c b a)
+
+    |  Do 80 Rounds of Complicated Processing.
+   | 16  0do  >r  3dup F  $5A827999 +  r>  i BLK0  MIX  loop
+      F    0 BLK0  MIX  
+      F    1 BLK0  MIX  
+      F    2 BLK0  MIX  
+      F    3 BLK0  MIX  
+      F    4 BLK0  MIX  
+      F    5 BLK0  MIX  
+      F    6 BLK0  MIX  
+      F    7 BLK0  MIX  
+      F    8 BLK0  MIX  
+      F    9 BLK0  MIX  
+      F    10 BLK0  MIX  
+      F    11 BLK0  MIX  
+      F    12 BLK0  MIX  
+      F    13 BLK0  MIX  
+      F    14 BLK0  MIX  
+      F    15 BLK0  MIX  
+
+      F    16 BLK  MIX  
+      F    17 BLK  MIX  
+      F    18 BLK  MIX  
+      F    19 BLK  MIX  
+
+|    20 16 do   F  i BLK   MIX  loop
+    | 40 20 do      H1  i BLK   MIX  loop
+     H1  20 BLK   MIX  
+     H1  21 BLK   MIX  
+     H1  22 BLK   MIX  
+     H1  23 BLK   MIX  
+     H1  24 BLK   MIX  
+     H1  25 BLK   MIX  
+     H1  26 BLK   MIX  
+     H1  27 BLK   MIX  
+     H1  28 BLK   MIX  
+     H1  29 BLK   MIX  
+     H1  30 BLK   MIX  
+     H1  31 BLK   MIX  
+     H1  32 BLK   MIX  
+     H1  33 BLK   MIX  
+     H1  34 BLK   MIX  
+     H1  35 BLK   MIX  
+     H1  36 BLK   MIX  
+     H1  37 BLK   MIX  
+     H1  38 BLK   MIX  
+     H1  39 BLK   MIX  
+
+|    60 40 do  G   i BLK   MIX  loop
+     G   40 BLK   MIX 
+     G   41 BLK   MIX 
+     G   42 BLK   MIX 
+     G   43 BLK   MIX 
+     G   44 BLK   MIX 
+     G   45 BLK   MIX 
+     G   46 BLK   MIX 
+     G   47 BLK   MIX 
+     G   48 BLK   MIX 
+     G   49 BLK   MIX 
+     G   50 BLK   MIX 
+     G   51 BLK   MIX 
+     G   52 BLK   MIX 
+     G   53 BLK   MIX 
+     G   54 BLK   MIX 
+     G   55 BLK   MIX 
+     G   56 BLK   MIX 
+     G   57 BLK   MIX 
+     G   58 BLK   MIX 
+     G   59 BLK   MIX 
+
+|    80 60 do     H2  i BLK   MIX  loop
+    H2  60 BLK   MIX
+    H2  61 BLK   MIX
+    H2  62 BLK   MIX
+    H2  63 BLK   MIX
+    H2  64 BLK   MIX
+    H2  65 BLK   MIX
+    H2  66 BLK   MIX
+    H2  67 BLK   MIX
+    H2  68 BLK   MIX
+    H2  69 BLK   MIX
+    H2  70 BLK   MIX
+    H2  71 BLK   MIX
+    H2  72 BLK   MIX
+    H2  73 BLK   MIX
+    H2  74 BLK   MIX
+    H2  75 BLK   MIX
+    H2  76 BLK   MIX
+    H2  77 BLK   MIX
+    H2  78 BLK   MIX
+    H2  79 BLK   MIX
+
+    Add-to-Message-Digest 
+	;
+
+|  **********  SHA-INIT   SHA-UPDATE   SHA-FINAL   .SHA  **********
+
+create init-vector
+        $67452301 ,
+        $EFCDAB89 ,
+        $98BADCFE ,
+        $10325476 ,
+        $C3D2E1F0 ,
+	
+
+: sha-init          ( -- )
+    |  Initialize Message-Digest with starting constants.
+	init-vector
+	| Message-Block 16 cells +
+	Message-Digest
+	5 cells move
+    |  Zero bit count.
+    0L SIZE 2! ;
+
+: shaupdate-loop 
+	SIZE @  511and  3 >>  >r  BSIZE r@ -  over u> not
+	r> swap 0;drop
+	>r
+
+	2dup  BSIZE r@ -  /string  dup >r  2swap  r> -
+		Message-Block r@ + swap
+		move
+	TRANSFORM
+	SIZE 2@  BSIZE r> -  3 <<  m+  SIZE 2!
+	shaupdate-loop
+	;
+: sha-update        ( str len -- )
+    |  Transform 512-bit blocks of message.
+    | BEGIN        |  Transform Message-Block?
+	shaupdate-loop 
+    |  Save final fraction of input
+    Message-Block   +  swap  dup >r  move  ( )
+    SIZE 2@  r> 0
+	d2* d2* d2* d+ 
+	SIZE 2!
+	;
+
+: sha-final-loop
+	SIZE @ 511and  448 - 0;
+	sb0  1 sha-update
+	drop
+	sha-final-loop
+	;
+: sha-final         ( -- )
+    |  Save SIZE for final padding.
+    SIZE 2@
+	bswap  swap  bswap  swap
+	swap Message-Block 22 cells + 2!
+    |  Pad so SIZE is 64 bits less than a multiple of 512.
+	
+    sb80  1 sha-update
+	sha-final-loop
+
+	Message-Block 22 cells + 8  sha-update 
+	;
+
+create sha1buf 40 allot
+: (sha1) ( -- a n )
+	sha1buf 40 blank
+	base @ >r hex
+	5 0do
+|		Message-Block 16 i + cells + 
+		Message-Digest i cells +
+		@ 8 '0 (p.r) strlwr drop
+		sha1buf i cells 2* + 8 move
+	loop 
+	r> base !
+	sha1buf 40 ;
+
+~
+
+: sha1 ( a n -- a n ) sha-init sha-update sha-final (sha1) ;
+1024 32 * constant SHABUF
+
+: sha1file ( a n -- a n )
+	open/r >r
+	SHABUF allocate 
+	sha-init
+	repeat
+		| buf
+		dup SHABUF r@ read
+		| buf n
+		dup if
+			over swap
+			sha-update
+			true
+		else
+			false
+		then
+	while
+	| buf
+	free
+	r> close
+	sha-final (sha1) ;
+pop~ 
+
+[IFTEST]
+test: empty string
+	0L sha1
+	" da39a3ee5e6b4b0d3255bfef95601890afd80709"
+	cmp not ;
+
+test: a
+	" a" sha1
+    " 86f7e437faa5a7fce15d1ddcb9eaeaea377667b8"
+	cmp not ;
+
+test: abc
+	" abc" sha1
+    " a9993e364706816aba3e25717850c26c9cd0d89d"
+	cmp not ;
+
+test: abcdefghijklmnopqrstuvwxyz
+	" abcdefghijklmnopqrstuvwxyz" sha1
+    " 32d10c7b8cf96570ca04ce37f2a19d84240d3a89"
+	cmp not ;
+
+test: abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq
+	" abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq" sha1
+    " 84983e441c3bd26ebaae4aa1f95129e5e54670f1"
+	cmp not ;
+[THEN]
+
+|||
+def: sha1
+ctx: ~
+stack: a n -- a' n'
+ver: 9.0.11
+desc: =
+	Given a string (a,n) returns the SHA1 hash corresponding to it, (a1,n1).
+	For example:
+
+		" hello" sha1 type
+
+	prints: 
+		AAF4C61DDCC5E8A2DABEDE0F3B482CD9AEA9434D
+=

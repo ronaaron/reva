@@ -1,0 +1,86 @@
+CROSS=0
+
+ifeq ($(CROSS),1)
+CMN=../../im/lib/mingw4/im.dll ../../cd/lib/mingw4/cd.dll ../lib/mingw4/iup.dll
+TEC=TEC_SYSNAME=Win32 TEC_UNAME=mingw4 TEC_SYSARCH=x86 TEC_TOOLCHAIN=i686-pc-mingw32- NO_DYNAMIC=No DLIBEXT=dll DLIBPREFIX="" DLIBPRE=""
+all: iupall.dll
+ALLLIBS=-lgdi32 -lole32 -lcomctl32 -lcomdlg32 -lopengl32 -lole32 -luuid -loleaut32 -lfreetype -lwinspool -lz
+
+clean:
+	find . -type d -name 'mingw4' -exec rm -rf {} \;
+
+else
+all: libiupall.so 
+ALLLIBS=-lm $(shell pkg-config --libs gtk+-2.0 gdk-2.0) -lGLU -LGL -lwebkit-1.0 -liconv
+
+clean:
+	find . -type d -name 'Linux26g4' -exec rm -rf {} \;
+endif
+
+libiupall.so: iupso cdso imso iupcontrolsso iupcdso iupglso iupimso iupimglibso iuppplotso iupwebso Linux26g4/extra.o
+	gcc -shared -o libiupall.so `find -type f -name '*.o' -a -path '*Linux26g4*'` $(ALLLIBS)
+
+iupall.dll: libiup libiupcontrols libiupcd libiupgl libiupim libiupimglib libiuppplot mingw4/extra.o
+	i686-pc-mingw32-g++ -shared -o iupall.dll `find -type f -name '*.o' -a -path '*mingw4*'` $(ALLLIBS)
+
+Linux26g4/extra.o: extra.c
+	@-mkdir Linux26g4
+	gcc -c -o Linux26g4/extra.o extra.c 
+
+mingw4/extra.o: extra.c
+	@-mkdir mingw4
+	i686-pc-mingw32-gcc -c -o mingw4/extra.o extra.c 
+
+iupso: cdso imso
+	make -C iup/src $(CMN)  iup  
+iupcontrolsso: cdso 
+	make -C iup/srccontrols $(CMN) USE_GTK=1 LIBS=-L../lib/Linux26g4 
+iupcdso: cdso 
+	make -C iup/srccd $(CMN) USE_GTK=1
+iupglso: cdso 
+	make -C iup/srcgl $(CMN) LIBS=-L../lib/Linux26g4
+iupimso: cdso imso
+	make -C iup/srcim $(CMN)
+iupimglibso: cdso imso
+	make -C iup/srcimglib $(CMN)
+iuppplotso: cdso 
+	make -C iup/srcpplot $(CMN) USE_GTK=1
+iupwebso: cdso 
+	make -C iup/srcweb $(CMN)
+
+cdso: 
+	make -C cd/src cd  $(CMN) cd_pdflib cd_freetype 
+imso: 
+	make -C im/src im $(CMN)
+
+libiup: libcd libim 
+	make -C iup/src $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32' iup 
+
+libiupcd: libiup libcd libim 
+	make -C iup/srccd $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN)' 
+
+libiupgl: libiup libcd libim 
+	make -C iup/srcgl $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 -lopengl32 $(CMN)' 
+
+libiupim: libiup libcd libim 
+	make -C iup/srcim $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN)' 
+
+libiuppplot: libiup libcd libim 
+	make -C iup/srcpplot $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN) ../lib/mingw4/iupcd.dll' 
+
+libiupimglib: libiup libcd libim 
+	make -C iup/srcimglib $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN)' 
+
+libiupweb: libiupole libiup libcd libim 
+	make -C iup/srcweb $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN)' 
+libiupole: libiup libcd libim 
+	make -C iup/srcole $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN) -lole32 -luuid -loleaut32'  iupole
+
+libiupcontrols: libiup libiupcd libcd libim
+	make -C iup/srccontrols $(TEC) LIBS='-lgdi32 -lole32 -lcomctl32 -lcomdlg32 $(CMN) ../lib/mingw4/iupcd.dll' iupcontrols
+
+libcd: 
+	make -C cd/src $(TEC) LIBS='-lgdi32 -lcomdlg32 -lwinspool -L../lib/mingw4 -lpdflib -lfreetype -lz' cd_pdflib cd cd_freetype 
+
+libim: 
+	make -C im/src $(TEC) LIBS='-lgdi32' im

@@ -1,0 +1,72 @@
+| gettext library, akin to the GNU 'gettext' library (but not GNU or based on
+| their code in any way 
+| vim: ft=reva :
+
+| The "_(" word parses until the next ")", and writes the parsed string and an
+| index number to a file "strings.po" which is basically in GNU po format,
+| almost.
+|
+| Then the number is compiled in, before a call to ((gettext)), which actually
+| retrieves the string from the database (a SQLite database with the strings in
+| it)
+|
+true [IF]
+." string/gettext is not ready" cr
+[ELSE]
+push~
+
+~strings
+
+| This var is used by the _( word to get the next id...
+variable gettext-count
+variable po-file
+create po-name 256 allot
+| initialize the gettext engine
+: append ( a n -- h )
+	2dup open/rw	| a n h
+	ioerr @ if
+		drop creat
+	else
+		-rot 2drop
+		dup fsize over seek
+	then
+	;
+
+: set-po ( a n -- )
+	255 clamp po-name place
+	po-name count creat dup
+	" default: en lang: en" rot write dup
+	linefeed rot write dup
+	linefeed rot write close
+	;
+
+
+: >po ( a n -- )
+	po-file @ ?dup 0if po-name count append dup po-file !  then write ;
+: -po 0 po-file xchg ?dup if close then ;
+
+| save string to output file;
+: >gettext ( a n -- m )
+	gettext-count ++
+	gettext-count @ dup >r | a n m
+	(.) >po "  msgid: " >po >po linefeed >po
+	" msgtxt: " >po linefeed >po linefeed >po
+	-po
+	r>
+	;
+| get string #n from the database, as appropriate for the current language
+: ((gettext)) ( n -- a n )
+	(.)
+	;
+:: 	po-name count 1- type cr 
+	; ~sys.onstartup
+macro
+: _( ( <name> -- ) 
+	') parse >gettext literal, ['] ((gettext)) compile ;
+forth
+
+pop~
+[THEN]
+|||
+
+

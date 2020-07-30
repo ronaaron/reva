@@ -1,0 +1,155 @@
+| vim: ft=reva :
+| xmlparse - wrapper for expat parser
+
+push~
+context: ~xml
+~xml
+
+context: ~expat
+~expat
+LIN [IF] " libexpat.so" [THEN]
+MAC [IF] " libexpat.dylib" [THEN]
+WIN [IF] " libexpat.dll" [THEN] 
+lib expat
+
+| elementhandler
+| void (XMLCALL *XML_ElementDeclHandler) (void *userData, const XML_Char *name, XML_Content *model);
+
+
+0 func: XML_ExpatVersion
+2 vfunc: XML_SetElementDeclHandler | (XML_Parser parser, XML_ElementDeclHandler eldecl);
+
+| void (XMLCALL *XML_AttlistDeclHandler) ( void            *userData, const XML_Char  *elname, const XML_Char  *attname, const XML_Char  *att_type, const XML_Char  *dflt, int              isrequired);
+
+2 vfunc: XML_SetAttlistDeclHandler | (XML_Parser parser, XML_AttlistDeclHandler attdecl);
+| void (XMLCALL *XML_XmlDeclHandler) (void           *userData, const XML_Char *version, const XML_Char *encoding, int             standalone);
+
+2 vfunc: XML_SetXmlDeclHandler | (XML_Parser parser, XML_XmlDeclHandler xmldecl);
+
+1 func: XML_ParserCreate | (const XML_Char *encoding); returns: XML_Parser
+1 vfunc: XML_ParserFree | (XML_Parser parser
+
+2 func: XML_ParserCreateNS | (const XML_Char *encoding, XML_Char namespaceSeparator); returns XML_Parser
+
+2 func: XML_ParserReset | (XML_Parser parser, const XML_Char *encoding); returns XML_Bool
+| void (XMLCALL *XML_StartElementHandler) (void *userData, const XML_Char *name, const XML_Char **atts);
+| void (XMLCALL *XML_EndElementHandler) (void *userData, const XML_Char *name);
+| /* s is not 0 terminated. */
+| void (XMLCALL *XML_CharacterDataHandler) (void *userData, const XML_Char *s, int len);
+| /* target and data are 0 terminated */
+| void (XMLCALL *XML_ProcessingInstructionHandler) ( void *userData, const XML_Char *target, const XML_Char *data);
+| /* data is 0 terminated */
+| void (XMLCALL *XML_CommentHandler) (void *userData, const XML_Char *data);
+| void (XMLCALL *XML_StartCdataSectionHandler) (void *userData);
+| void (XMLCALL *XML_EndCdataSectionHandler) (void *userData);
+| void (XMLCALL *XML_DefaultHandler) (void *userData, const XML_Char *s, int len);
+3 vfunc: XML_SetElementHandler | (XML_Parser parser, XML_StartElementHandler start, XML_EndElementHandler end);
+2 vfunc: XML_SetCharacterDataHandler | (XML_Parser parser, XML_CharacterDataHandler handler);
+2 vfunc: XML_SetUserData | (XML_Parser parser, void *userData);
+4 func: XML_Parse | (XML_Parser parser, const char *s, int len, int isFinal); returns : XML_Status
+2 func: XML_StopParser | (XML_Parser parser, XML_Bool resumable); returns: XML_Status
+
+needs callbacks
+
+| our data chunklet which handles the interface between expat and Forth
+| parser:
+|    +00  expat parser handle
+|    +04  start callback
+|    +08  end callback
+|    +0C  char callback
+: (cb-common) cells 0 cb-param + @ 0; execute ;
+| ::  | put data on stack: 
+: cb-start callback 
+	1 cb-param 2 cb-param
+	| first param is our data pointer.  Get the proper callback from there
+	1 (cb-common)
+	; 
+| ::  | put data on stack: 
+: cb-end callback 
+	1 cb-param 
+	| first param is our data pointer.  Get the proper callback from there
+	2 (cb-common)
+	;
+| ::  | put data on stack: 
+: cb-char callback 
+	1 cb-param  2 cb-param
+	| first param is our data pointer.  Get the proper callback from there
+	3 (cb-common)
+	;
+~xml
+: xml-new-parser ( -- h ) 
+	| allocate our chunk:
+	4 cells allocate dup >r
+	4 cells zero
+	0 XML_ParserCreate r@ !
+
+	r@ @ ['] cb-char XML_SetCharacterDataHandler
+	r@ @ 
+		['] cb-start
+		['] cb-end  XML_SetElementHandler
+
+	r@ @ r@ XML_SetUserData
+
+	r>
+	;
+: xml-reset  ( parser -- f ) @ 0 XML_ParserReset ;
+: xml-sethandlers ( xt-start xt-end xt-content parser -- )
+	>r
+	r@ 3cell+ !
+	r@ 2cell+ !
+	r> cell+ !
+	;
+: xml-parse ( parser a n -- f )  rot @ -rot 1 XML_Parse ;
+: xml-parse? ( parse a n final -- f ) >r rot @ -rot r> XML_Parse ;
+
+: xml-free-parser ( parser -- )
+	dup @ XML_ParserFree
+	free
+	;
+pop~
+
+|||
+
+def: xml-new-parser
+stack: -- h
+ctx: ~xml
+desc: |
+	Allocate a new "expat" parser.  Returns a "handle" for subsequent use.
+|
+
+def: xml-reset
+stack: h -- f
+ctx: ~xml
+desc: |
+	Resets the state held by the parser handle "h", so it can handle a new XML
+	stream.
+|
+
+def: xml-sethandlers
+stack: xt-start xt-end xt-content h -- 
+ctx: ~xml
+desc: |
+	Sets the XTs to call back when an XML entity starts, ends and has content.
+|
+
+def: xml-parse
+stack: h a n -- f
+ctx: ~xml
+desc: |
+	Parse the string (a,n) using the parser "h".  Returns a flag indicating
+	success or failure.
+|
+
+def: xml-parse?
+stack: h a n final -- f
+ctx: ~xml
+desc: |
+	Same as "xml-parse", but takes a flag "final" which indicates whether this
+	is the last part of the string.
+|
+def: xml-free-parser
+stack: h --
+ctx: ~xml
+desc: |
+	Frees the allocated parser and invalidates it.
+|

@@ -1,0 +1,161 @@
+| vim: ft=reva :
+|
+| IUP wrapper for REVA forth
+|
+| This wrapper was done by Danny Reinhold / Reinhold Software Services
+| Contact me at: info@reinhold-software-services.de
+|
+| Reva's license terms also apply to this file.
+| But notice:
+|
+| The copyright and license conditions of the IUP
+| GUI toolkit:
+|
+| ----
+| Copyright © 1994-2005 Tecgraf / PUC-Rio and PETROBRAS S/A.
+|
+| Permission is hereby granted, free of charge, to any person
+| obtaining a copy of this software and associated documentation
+| files (the "Software"), to deal in the Software without restriction,
+| including without limitation the rights to use, copy, modify, merge,
+| publish, distribute, sublicense, and/or sell copies of the Software,
+| and to permit persons to whom the Software is furnished to do so,
+| subject to the following conditions: 
+|
+| The above copyright notice and this permission notice shall be
+| included in all copies or substantial portions of the Software. 
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+| EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+| OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+| IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+| DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+| OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+| THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+| ----
+
+push~
+
+needs ui/iup-common
+~
+context: ~iup
+~util
+~iup
+
+| Fill up the ~iup context.
+| This context contains all the functions imported by the
+| iup dlls.
+| Usually this context should not be used directly.
+| Better use the more comfortable words defined in ~ui
+
+
+
+iup drop
+2 func: IupOpen		| 1=IUP_ERROR, 0=IUP_NOERROR , -1=IUP_OPENED 
+0 vfunc: IupClose
+1 func: IupLabel  | char *title
+1 func: IupDialog | Ihandle *child
+1 func: IupShow | Ihandle *ih
+1 func: IupMap | Ihandle *ih
+1 func: IupHide | Ihandle *ih
+1 vfunc: IupDestroy | Ihandle *ih
+3 func: IupPopup | ih, x, y
+3 vfunc: IupShowXY | ih, x, y
+0 vfunc: IupMainLoop
+0 func: IupLoopStep				| changed to vfunc: according IUP doc
+0 vfunc: IupFlush
+1 func: IupRefresh
+1 func: IupUpdate
+1 func: IupVbox
+1 func: IupHbox
+1 func: IupZbox
+2 func: IupAppend
+2 func: IupButton
+2 func: IupSetFunction
+3 vfunc: IupSetAttribute			| changed to vfunc: according IUP doc
+3 vfunc: IupStoreAttribute			| changed to vfunc: according IUP doc
+4 vfunc: IupStoreAttributeId			| changed to vfunc: according IUP doc
+2 func: IupGetAttribute
+2 func: IupGetAttributeId
+0 func: IupFill
+1 func: IupRadio
+1 func: IupFrame 
+1 func: IupList
+1 func: IupText
+1 func: IupMultiLine
+2 func: IupToggle
+0 func: IupFileDlg
+0 func: IupTimer
+0 func: IupGetActionName
+1 func: IupCanvas
+3 func: IupSetCallback
+0 func: IupUser
+1 func: IupSbox
+3 func: IupImage
+2 func: IupSetHandle
+1 func: IupMenuv
+1 func: IupMenu
+2 func: IupItem
+0 func: IupSeparator
+2 func: IupSubmenu
+2 func: IupGetNextChild
+2 func: IupGetDialogChild
+1 func: IupHelp
+1 func: IupLoadImage
+1 func: IupGetParent
+1 func: IupGetDialog
+1 func: IupTabs as iup-tabs-1
+2 func: IupTabs as iup-tabs-2
+3 func: IupTabs as iup-tabs-3
+4 func: IupTabs as iup-tabs-4
+5 func: IupTabs as iup-tabs-5
+6 func: IupTabs as iup-tabs-6
+7 func: IupTabs as iup-tabs-7
+8 func: IupTabs as iup-tabs-8
+9 func: IupTabs as iup-tabs-9
+10 func: IupTabs as iup-tabs-10
+
+1 func: iupKeyCodeToName
+1 func: iupKeyNameToCode
+
+0 func: IupVersion
+0 func: iupdrvGetScrollbarSize
+
+MAC [IF]
+iupcd drop iupcontrols drop
+[THEN]
+0 func: IupControlsOpen
+0 func: IupControlsClose
+1 func: IupDial
+1 func: IupMatrix
+5 func: IupMatStoreAttribute
+4 func: IupMatGetAttribute
+4 func: IupMatGetInt
+4 func: IupMatGetFloat
+2 func: IupCbox
+0 func: IupMessageDlg
+
+MAC [IF]
+iup drop iupgl drop
+[THEN]
+0 func: IupGLCanvasOpen
+1 func: IupGLCanvas
+1 vfunc: IupGLMakeCurrent			| modified to vfunc: 11FEB09
+1 func: IupGLIsCurrent
+1 vfunc: IupGLSwapBuffers			| modified to vfunc: 11FEB09
+5 vfunc: IupGLPalette				| changed to vfunc: according IUP doc
+
+
+pop~
+
+|||
+
+def: iup
+ctx: ~iup
+stack: -- libhandle
+desc: =
+The handle of the IUP library. Usually you will not need to use this word.
+Have a look into the IUP documentation if you want to use IUP directly.
+You will find the IUP homepage in the internet at: http://www.tecgraf.puc-rio.br/iup/
+=
+

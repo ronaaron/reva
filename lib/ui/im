@@ -1,0 +1,23 @@
+| vim: ft=reva
+
+| Wrapper for the IM (Image Manager) library.
+| For the copyright restrictions (basically the same
+| as for IUP) have a look at the IM website:
+| http://www.tecgraf.puc-rio.br/im
+
+push~
+needs ui/iup-common
+~
+context: ~im
+~util
+~im
+
+2 func: imFileOpen			| imfile <- filename,&error
+3 func: imFileOpenAs		| imfile <- filename,format,&error
+3 func: imFileNew			| imfile <- filename,format,&error
+1 vfunc: imFileClose		| imfile
+0 func: imVersion			| stringversion
+
+pop~
+
+||| 

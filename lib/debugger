@@ -1,0 +1,362 @@
+| primitive debugging support vim: ft=reva ts=4
+
+push~ 
+needs util/disasm
+~disasm ~io ~strings ~util ~priv ~ 
+
+context: ~debug
+~debug
+context: ~debug-priv
+~debug-priv
+variable xtnear
+variable xtnotfound
+
+exit~
+
+with~ ~debug-priv
+: xt-valid ( xt -- f )
+	['] ~sys.cold here 1- between ;
+
+: xt>near  ( xt -- a n )
+	xtnear off
+	xtnotfound on
+	dup xt-valid 0if drop 0L ;then
+
+    {
+       @    | xt context 
+	   {
+			cell-
+			2dup
+			>xt @ 
+			| xt dict xt xt1 
+			2dup =if
+				2drop
+				xtnear !
+				xtnotfound off
+				false
+			else
+				>if
+					| xt dict 
+					xtnear @ 0if xtnear ! else
+						dup >xt @ xtnear @ >xt @ >if
+							xtnear !
+						else drop then
+					then
+				else
+					drop
+				then
+				true
+			then
+	   } swap iterate 
+	   xtnotfound @
+    } all-contexts iterate drop
+	xtnear @ ?dup if >name count else 0L then
+    ;
+
+: xt>string
+	dup xt>near				| a n r:xt
+	dup 0if 
+		2drop
+		hex# 
+	;then
+
+	here place >r
+
+	| is the address identical, or offset from it?
+	r@ xtnear @ 
+	dup 0if 2drop else
+		>xt 
+		@ -
+		?dup if
+			dup 1000 <if
+				"  + " here +place
+				(.) here +place
+				"  ; " here +place
+				r@ hex# here +place
+			else
+				drop r@ hex# here place
+			then
+		then
+		here count 
+	then 
+	rdrop
+	;
+
+::  dup xt>near if
+		1- xt-name !
+		xtnear @ >xt @ tuck - xt-offset !
+	else
+		xt-name off
+		xt-offset off
+		2drop false
+	then ;  is known-xt
+
+: .xt xt>string type ;
+
+: seeconstant ." constant: " : const_or_val dup >xt @ ? ;
+: seevalue ." value: "  const_or_val ;
+
+: ((see)) ( addr -- addr' ) 0; -1 disasm ; 
+: seevar ." variable: " dup >xt @ dup .x ."  -> " @ .x cr ;
+: seedeferred
+	." deferred word: " cr
+	>xt @ @  dup .xt cr
+	((see))
+	;
+
+: seedoes ." does>:" cr >xt @ 
+	dup ." data area:" cr 16 dump
+	." code area:" cr
+	cell- @ ((see)) ;
+::
+	~sys.find-dict
+	?dup 0if 
+		dup 0if 2drop pc @ ((see)) drop
+		else
+			type '? emit cr 
+		then
+	;then
+	dup >class @
+	case
+		['] 'defer of seedeferred endof
+		['] 'constant of seeconstant endof
+		['] 'value of seevalue endof
+		['] 'variable of seevar endof
+		['] 'does of seedoes endof
+		drop >xt @ 
+		((see))
+	endcase
+	drop cr 
+	; is (see)
+
+
+: .rs 0drop;
+	swap
+	dup @ 0drop;
+	." -> " xt>string type cr
+	cell+
+	swap 1- .rs ;
+
+needs os/exception
+with~ ~except
+
+: debug-prompt  cr ." dbg> " ;
+
+| EIP ESP EBP EAX ECX EDX EBX ESI EDI prompt
+|  0   1   2   3   4   5   6   7   8    9
+|  pushad order: eax, ecx, edx, ebx, esp, ebp, esi, edi
+create regnames
+	" ipspbpaxcxdxbxsidi" here,
+
+create debug-context
+	10 cells allot
+
+: EIP debug-context  @ ;
+: ESP debug-context cell+  @ ;
+
+
+: restore-context
+	
+	debug-context
+
+inline{ 8B 18 4B 8B 60 04 53 8B 58 18 8B 48 10 8B 50 14 8B 
+        70 1C 8B 78 20 8B 68 08 8B 40 0C C3 } 
+	;
+
+16 constant BPTS
+create breakpoints 
+	BPTS cells allot
+	breakpoints BPTS cells zero
+create bp-inst BPTS allot
+
+: bp@  ( n -- m ) cells breakpoints + @ ;
+: bp!  ( n m -- n ) over cells breakpoints + ! ;
+: reset-bp ( n -- n )
+	dup >r
+	bp@ if		| n
+		r@ bp-inst + c@ 
+		r@ bp@ c!
+		." Reset previous bp# " r@ . cr
+	then
+	r> 0 bp!
+	;
+
+| restore minimal context:
+: jmpto inline{ 50 8B 46 04 8B 36 C3 } ;
+
+variable this-bp
+variable return-to
+
+: c 
+	this-bp @ -1 <>if
+		this-bp @ reset-bp drop
+	then
+	| resume normal operation (will hit BP at EIP):
+	" without~" eval
+	debug-context 9 cells + @ is ~sys.prompt
+	restore-context 
+	;
+
+: .b BPTS 0do i bp@ ?dup if
+		." #" i .  xt>string type cr
+	then loop ;
+: bd ( n -- )
+	dup reset-bp
+	." Removed breakpoint # " . cr
+	;
+
+: get-bp  ( -- n )
+	BPTS 0do 
+		i bp@ 0if
+			i unloop
+		;then
+	loop
+	0
+	;
+: ip>bp ( eip -- bp# )
+	BPTS 0do 
+		i bp@ over 
+		=if
+			drop i unloop
+		;then
+	loop
+	drop
+	-1
+	;
+: b ( n xt -- ) | break at xt
+	| restore old bp code if necessary:
+	swap reset-bp
+	| xt n
+	over c@			| instruction to stash away
+	over bp-inst + c!	| stash it
+	over $cc swap c!
+
+	." Breakpoint #" dup . ." at " over .x cr
+	swap bp! drop
+	;
+
+with~ ~sys
+: printexception 
+	case
+		SIGSEGV of ." SIGSEGV " endof
+		SIGFPE of ." SIGFPE " endof
+		SIGILL of ." SIGILL " endof
+		SIGTRAP of ." SIGTRAP " endof
+		SIGHUP of ." SIGHUP " endof
+		SIGQUIT of ." SIGQUIT " endof
+		SIGABRT of ." SIGABRT " endof
+		SIGBUS of ." SIGBUS " endof
+		SIGKILL of ." SIGKILL " endof
+		SIGPIPE of ." SIGPIPE " endof
+		SIGALRM of ." SIGALRM " endof
+		SIGTERM of ." SIGTERM " endof
+		.x
+	endcase
+	;
+
+: printregs (  -- )
+	cr
+	9 0do
+		'e emit i 2* regnames + 2 type  6 spaces 
+	loop
+	cr
+	9 0do
+		i cells debug-context + @ .x
+	loop
+	cr
+	;
+
+: breakpoint ( -- )
+	EIP 1- dup xt>string rot ip>bp dup this-bp !
+
+	-1 =if
+		." Unknown breakpoint hit at " type cr
+	else
+		." bp #" this-bp ? ." hit at " type cr
+		." To continue, type 'c'<ENTER>" cr
+	then
+	;
+variable in-exception
+0 value exception-code
+:: ( EDI ESI EBX EDX ECX EAX EBP ESP EIP except_code  -- continueip|0 )
+	to exception-code
+
+	true in-exception xchg if ." Double exception" cr bye ;then
+
+	old-base ?dup if  base! 0 to old-base then 
+
+	debug-context 
+	9 0do
+		tuck !
+		cell+
+	loop
+	['] ~sys.prompt @ swap !
+
+	['] debug-prompt is ~sys.prompt
+
+
+	printregs
+
+	exception-code SIGTRAP =if 
+		in-exception off
+		r@ return-to !
+		breakpoint 
+	else
+		cr ." Exception " exception-code printexception ." in: " 
+			EIP xt>string type cr
+		ESP 10 .rs
+		EIP ((see)) drop
+		in-exception off
+		exception-code SIGTERM =if bye ;then
+	then
+	>in off src off reset 
+	" with~ ~.~debug" eval
+	['] interp 
+	; is exception
+~
+: .bp ~debug..b cr ;
+: bd ( n -- ) ~debug.bd ;
+: bp ( <name> -- )
+	get-bp
+	' dup 0if
+		." not found" cr
+		2drop
+	else
+		~debug.b
+	then
+	;
+: disasm ( xt -- ) cr ((see)) cr ;
+
+[IFTEST]
+." Debugger tests: disassembly of all words in ~" cr
+variable done
+test: disassemble all words
+	done off
+	$babee
+	{
+		done ++
+		@ 
+		dup temp !
+		((see)) drop cr
+		~debug.exception-code if
+			temp @ >name count blab
+			false
+		else
+			true
+		then
+	} last iterate
+	$babee = 
+	;
+
+[THEN]
+
+pop~
+|||
+
+def: disasm  
+stack: xt -- 
+ctx: ~
+desc: |
+	High-level disassembly word, which takes a supposed "xt" and disassembles
+	until the first 'return' or 'jump'
+|

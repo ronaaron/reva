@@ -1,0 +1,30 @@
+<title>Reva License</title>
+
+<h1>REVA'S SIMPLE LICENSE:</h1>
+
+<h2>PUBLIC DOMAIN:</h2>
+Reva is dedicated by the author, [mailto:ron@ronware.org|Ron Aaron], to the
+<i>Public Domain</i>.   In the event
+your country does not recognize his ability to so dedicate it, he also grants
+unconditional, non-revocable permission to anyone who obtains a copy of this
+software, to use, modify and to redistribute it without limitation.
+
+That means you may:
+  *  Use Reva however you like, for commercial or non-commercial use
+  *  Charge money for it or give it away
+  *  Modify it as much as you like, or keep it as it is
+
+Nevertheless, Ron would appreciate your giving credit if you find Reva useful in
+your projects or products, by providing his contact information and credit as the
+original author.  You may also support the development effort by making
+[Financial support|a financial contribution].
+
+<h2>AS IS:</h2>
+Because Reva is free -- both in monetary cost as well as in your freedom to use
+it as you see fit -- it is provided <b>as is</b>, with no warranty of any kind.
+It may or may not work as you would like. It might even damage your computer or
+data.  By using Reva you accept upon yourself any liability for its use. 
+
+<h2>OTHER COMPONENTS:</h2>
+The included "pcre.dll" is under the BSD license.  For further details go to
+the [http://www.pcre.org/|PCRE] home-page.  Other included libraries may have their own licenses, usually LGPL (see the home-pages of each specific library to determine its license).

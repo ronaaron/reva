@@ -1,0 +1,54 @@
+| vim: ft=reva :
+| Common functionality for all data/* items
+
+push~
+~ context: ~data
+~data
+context: ~datapriv
+~datapriv
+
+: data-iterate ( xt data -- ) 2drop ;
+: data-destroy ( data -- ) free ;
+: data-new-item ( data -- ) drop ;
+: data-compare ( data m data m -- f ) cmp ;
+
+
+0 constant DATA_ITERATE
+1 cells constant DATA_DESTROY
+2 cells constant DATA_NEW_ITEM
+3 cells constant DATA_COMPARE
+4 constant DATA_RESERVED
+
+: >iterate ( xt data -- ) ! ;
+: >destroy ( xt data -- ) cell+ ! ;
+: >new ( xt data -- ) 2cell+ ! ;
+: >compare ( xt data -- ) 3cell+ ! ;
+
+~data
+
+| The data collections have the following layout in common:
+|
+|   +00		xt of 'iterate' word
+|   +04		xt of 'destroy' word
+|   +08		xt of 'new-item' word
+|   +0C		xt of 'compare-item' word
+
+| 'n' is number of words of extra space required, beyond that listed above
+: new-data ( n -- a )
+	DATA_RESERVED + cells dup allocate
+	dup >r swap zero r> 
+	['] data-iterate over !
+	['] data-destroy over cell+ !
+	['] data-new-item over 2cell+ !
+	['] data-compare over 3cell+ !
+	;
+
+: iterate ( xt data -- ) dup @execute ;
+: destroy ( data -- ) dup cell+ @execute ;
+: new ( data -- item ) 2cell+ @execute ;
+: compare ( data data -- f ) dup 3cell+ @execute ;
+: dataspace ( data -- data' ) DATA_RESERVED cells + ;
+
+pop~
+
+|||

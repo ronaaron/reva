@@ -1,0 +1,356 @@
+| vim: ft=reva :
+| hash table implementations
+
+push~
+~ 
+context: ~hash
+~strings 
+
+~priv
+: h> ( h hash -- h[] ) 
+	swap lcount			| hash h' n
+	rot swap mod abs	| h' ix
+	cells + ;
+
+~hash
+
+| ( n -- a )
+: (halloc) ( n -- a ) align here swap allot ;
+
+defer halloc  ' (halloc) is halloc
+defer hfree   ' drop  is hfree
+defer hash    ' fnvhash is hash
+
+: hash: ( size <name> -- )
+	parsews
+: (hash) ( size a n -- )
+	(create)	['] (halloc) ,	| allocator
+			['] drop ,		| cell+ deallocator
+			['] fnvhash ,	| 2cell+ hashfunc
+			dup ,			| 3cell+ table size
+			here swap
+			cells allot		| 4cell+ table data
+			lcount cells zero
+	does>	| set the correct allocators etc:
+			lcount is halloc
+			lcount is hfree
+			lcount is hash
+			| points to 3cell+
+			;
+
+: alloc>hash ( xt h -- ) ! ;
+: free>hash ( xt h -- ) cell+ ! ;
+: hash>hash ( xt h -- ) 2cell+ ! ;
+
+: memhash: ( size <name> -- )
+	parsews
+: (memhash)
+ 	(hash) lastxt
+ 	['] allocate  over alloc>hash
+ 	['] free  over free>hash
+	drop
+ 	;
+
+| A hash entry consists of:
+|	-		pointer to next item (0 if end of list)
+|	cell+	N (size of key)
+|	...		N bytes of key
+|	...		M (size of payload)
+|	...		M bytes of payload
+|	data,key -- blob
+: >key ( B -- a n ) cell+ lcount ;
+: >payload ( B -- a n ) >key + 1+ lcount ;
+: >next ( B -- B' ) 00; @ ;
+: >hash ( B -- n ) >key hash ;
+: .hentry ( B -- )
+	0;
+	dup ." item: " .x 
+	dup ." hash: " >hash .x 
+	dup ." next: " >next .x cr
+	dup ." key: " >key cr dump 
+	." payload: " >payload cr dump 
+	cr
+	;
+: >hentry ( b m a n -- B )
+	third over + 14 +		| 14 is three cells and two bytes
+	halloc dup >r			| b m a n (r: B)
+	dup off					| b m a n 
+	cell+ lplace>
+	lplace r> ;
+
+
+: iter ( xt h -- )
+	lcount  0do		| h'
+		lcount			| h''  h'^
+		?dup if
+			repeat
+				dup fourth 
+				execute
+				@ dup
+			while drop
+		then
+	loop 2drop 
+	;
+
+: put ( b m a n h -- )
+	>r >hentry 
+	dup >hash r>	| B hash h
+	swap h>	_dup			| B B 'h
+	xchg					| B h'^
+	| add to start of list of items for bucket:
+	dup 0if 2drop else swap ! then ;
+
+variable hentry.prev
+: get ( a n h -- b )
+	hentry.prev off
+	>r 2dup hash r> swap	| a n a n hash
+	h>						| a n h[]
+	?dup @ 0if 3drop 0 ;then	| return '0' since we found nothing
+	repeat
+		| a n h'
+		dup >r >key		| a n b m (r: h')
+		2over cmp r> swap		| a n h' cmp
+		| key matches exactly:
+		0if _2nip ;then
+		| sorry, try again:
+		dup hentry.prev !
+		@ dup
+	while
+	2drop 0
+	;
+
+| call 'xt' for each instance of (a,n)
+: getall ( a n xt h -- )
+	swap >r _2dup				| a n a n h (r: xt)
+	get ?dup if					| a n b (r: xt)
+		repeat					| a n b
+			_2dup				| a n a n b
+			dup >key			| a n a n b x y
+			rot >r cmp r> swap	| a n b flag
+			0if	
+				dup r@ execute 
+			then
+			@ dup
+		while
+	then
+	3drop rdrop
+	;
+
+: del ( a n h -- )
+	dup >r get dup 0if drop rdrop ;then
+	hentry.prev @ ?dup 0if
+		| beginning of list; need to update hash  table itself
+		dup >hash r> h> off
+	else
+		rdrop
+		| middle or end of list; update prev item
+		| item prev
+		over @ swap !
+		| item
+	then
+	hfree		| deallocate it
+	;
+
+: >filled ( h -- m n )
+	lcount		| h' a
+	dup >r
+	0 -rot		| 0 h' a
+	0do			| 0 h'
+		lcount if _1+ then
+	loop	
+	drop r> swap
+	;
+: .hash ( h -- )
+	." Hash table " dup .x ." using "
+	dup >filled 
+	. ." of " . ." buckets" cr
+	{ .hentry } swap iter ;
+
+pop~
+
+
+[IFTEST]
+needs testing
+~hash
+
+7 hash: joe
+
+test: put retrieve
+	" junk" " bondo" joe put
+	" bondo" joe get >payload " junk" cmp 0 = ;
+
+test: iter
+	" aaa" " bbbb" joe put
+	temp off
+	{ drop temp ++ } joe iter
+	temp @ 2 = ;
+
+test: retrieve non-existing key
+	" abc" joe get 0 = ;
+
+test: put over existing key
+	" whatever" " bondo" joe put
+	" bondo" joe get >payload " whatever" cmp 0 = ;
+
+test: simple delete
+	" bbbb" joe del
+	" bbbb" joe get 0 = ;
+
+test: getall
+	temp off
+	" bondo" { drop temp ++ } joe getall
+	temp @ 2 = ;
+
+variable a
+variable b
+test: fill it up and still get the values out
+	25 0 do
+		i 1000 * a !
+		i b !
+		a 4  b 4 joe put
+	loop
+	15 temp !   temp 4 joe get
+	>payload drop @ 15000 = ;
+
+test: complex delete in middle of chain
+	19 temp !
+	temp 4 joe del
+	temp 4 joe get 0 = ;
+
+test: complex delete at end of chain
+	15 temp !
+	temp 4 joe del
+	temp 4 joe get 0 = ;
+
+[THEN]
+
+|||
+
+def: hash:
+ctx: ~hash
+stack:  n <name> -- 
+ver: 2011.2
+desc: =
+	Define a new hash table called '<name>', with a bucket size of 'n' cells
+	=
+def: memhash:
+ctx: ~hash
+stack:  n <name> -- 
+ver: 2011.2
+desc: =
+	Same as "hash:", but uses dynamic memory instead of 'allot'
+	=
+def: (memhash)
+ctx: ~hash
+stack:  n a m -- 
+ver: 2011.2
+desc: =
+	As "memhash" but create using name (a,m)
+	=
+def: (hash)
+ctx: ~hash
+stack:  n a m -- 
+ver: 2011.2
+desc: =
+	As "hash" but create using name (a,m)
+	=
+def: put
+ctx: ~hash
+stack:  b m a n h  -- 
+ver: 2011.2
+desc: =
+	Insert the key (a,n) with the payload (b,m) into the hash table h
+	=
+def: get
+ctx: ~hash
+stack:  a n h  -- H
+ver: 2011.2
+desc: =
+	Find the key (a,n) in the hash table 'h', and return the entry "H".
+
+	Sets the variable "hentry.prev" to the previous item in the
+	hash-bucket's chain (or 0 if the beginning of the list)
+	=
+def: del
+ctx: ~hash
+stack:  a n h  -- 
+ver: 2011.2
+desc: =
+	Removes the item with the key (a,n) from the hash table 'h'.  
+	It only removes the first item with that key.
+	=
+def: iter
+ctx: ~hash
+stack:  xt h  --
+ver: 2011.2
+desc: =
+	Execute 'xt' for every entry in the hash table 'h'.  The stack 
+	diagram for the 'xt' is ( curr -- ).
+
+	"curr" is the current entry.  The xt must consume the data.
+	=
+def: >key
+ctx: ~hash
+stack:  H -- a n
+ver: 2011.2
+desc: =
+	Extract the key (a,n) from the hash entry "H"
+	=
+def: >payload
+ctx: ~hash
+stack:  H -- b m
+ver: 2011.2
+desc: =
+	Extract the payload (b,m) from the hash entry "H"
+	=
+def: >hash
+ctx: ~hash
+stack:  H -- n
+ver: 2011.2
+desc: =
+	Get the hash corresponding to the hash entry "H"
+	=
+def: .hentry
+ctx: ~hash
+stack:  H -- 
+ver: 2011.2
+desc: =
+	Prints a hash entry in a "friendly" way
+	=
+def: .hash
+ctx: ~hash
+stack:  H -- 
+ver: 2011.2
+desc: =
+	Prints a hash table in a "friendly" way
+	=
+def: getall 
+stack: a n xt h -- 
+ctx: ~hash
+ver: 2011.2
+desc: =
+	Same as "get", but calls "xt" for every matching key
+	=
+def: alloc>hash
+stack: xt h -- 
+ctx: ~hash
+ver: 2011.2
+desc: =
+	Set the allocator for the hash table
+	=
+def: free>hash
+stack: xt h -- 
+ctx: ~hash
+ver: 2011.2
+desc: =
+	Set the deallocator for the hash table
+	=
+def: hash>hash
+stack: xt h -- 
+ctx: ~hash
+ver: 2011.2
+desc: =
+	Set the hash routine for the hash table
+	=
+
+related: hash: put get del >key >payload >hash iter .hentry .hash getall alloc>hash free>hash hash>hash memhash: (hash) (memhash)

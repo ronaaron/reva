@@ -1,0 +1,216 @@
+| New version of locals lib - by Gtinker September 2009
+| vim: ft=reva :
+
+| This version stores the current set of locals in a buffer (locbuf) rather 
+| than in the body of the word and pushes and pops them from the return stack
+| on entry and exit from the word. In this way recursion is supported, 
+| however the "static" nature of the locals is lost.
+
+
+push~
+~priv ~sys ~util ~strings  ~
+~priv
+variable savelast
+variable savedict
+variable locptr      | points to the start of locals
+variable locctr      | count of locals used in this word
+variable linitctr    | count of locals to be initialised from stack
+variable got|        | 1 = vertical slash received
+align
+create locbuf 20 cells allot  | space for locals storage
+forth
+
+: localhdr header ['] 'value class! ;  ( <name> -- )
+: createlocals | define each local encountered in the input stream
+   repeat
+      >in @    | save input posn
+      parsews case
+         " |" strof drop got| on endof       | check for vertical slash
+         " ]" strof drop ;; endof            | found ']' so exit
+         " --" strof drop '] parse 2drop ;; endof  | parse to ] and exit
+         2drop
+         >in !    | restore input posn to start of local
+         localhdr | make a header for this local with 'value class
+
+         locctr @ cells locptr @ +  | get address of this local
+         last @ >xt !               | change the xt to this address
+         locctr ++ got| @ 0if linitctr ++ then  | count locals
+      endcase
+   again
+;
+exit~
+
+macro
+: addr
+   | check that the following word is a value (class is 'value) and leave its xt
+   [''] 'value isa
+   | compile in the address (xt) or leave it on tos
+   compiling? if literal, then
+;
+
+: pushlocs ( ptr ctr -- )
+   repeat
+      4 -               | dec ctr
+      2dup +  @   >rr   | get [ptr+ctr] and push onto return stack
+      dup
+   while	               | loop till ctr == 0
+   2drop
+;
+
+: local[    | parse input, defining locals until ']'
+   | save dictionary ptrs so we can erase locals later
+   locptr @ 0if last @ savelast ! dict @ savedict ! then
+   0 locctr !  0 linitctr !  got| off     | init stuf
+   locbuf locptr !         | ptr to start of locals
+   createlocals            | make a header and reserve space for each local
+
+   | put code to push current set of locals onto return stack
+   locptr @ literal, locctr @  cells literal, ['] pushlocs compile
+
+   linitctr @ 0 ?do              | put code to init locals from stack
+      $a3 1, locptr @ linitctr @ 1- i - cells + , | mov [locptr+linitctr-i], eax
+      $ad 1,                                       | lodsd
+   loop
+;
+
+
+~priv
+| modify all the "exit" words to pop the locals off the return stack
+| They are:-  ; ;; 0; 00; 0drop; 0;drop ;then
+
+: poplocs ( ptr ctr -- )
+   repeat
+      4 +   | inc ctr
+      2dup +  rr> swap !
+      dup
+   while    | loop till ctr == 0
+;
+
+: poplocals ( -- )
+   locptr @ locctr @ 1 - cells + literal,
+   locctr @ negate cells literal, ['] poplocs compile  ['] 2drop compile
+;
+
+: g;
+   locptr @ if
+      p: poplocals         | put code to pop locals from return stack to locptr
+      0 locptr !
+      savedict @ dict !
+      savelast @ last !    | remove locals definitions
+   then
+   p: ;     | compile in normal ';'
+;
+
+: g;;
+   locptr @ if	p: poplocals then
+   p: ;;    | compile in normal ';;'
+;
+
+~
+: ;then p: g;; p: then ;
+
+: 0;
+   locptr @ if
+      $2075c009 ,    | or eax, eax; jnz .done
+      p: poplocals
+   else
+      $0275c009 ,    | or eax, eax; jnz .done
+   then
+   $c3ad 2,          | lodsd; ret; .done:
+;
+
+: 00;
+   locptr @ if
+      $1f75c009 ,    | or eax, eax; jnz .done;
+      p: poplocals
+   else
+      $0175c009 ,    | or eax, eax; jnz .done;
+   then
+   $c3 1,            | ret; .done:
+;
+
+: 0;drop
+   locptr @ if
+      $75adc009 , $1f 1,   | or eax, eax; lodsd; jnz .done;
+      p: poplocals
+   else
+      $75adc009 , $01 1,   | or eax, eax; lodsd; jnz .done;
+   then
+   $c3 1,                  | ret; .done:
+;
+
+exit~
+
+~util
+: 0drop;
+   locptr @ if
+      $2175c009 ,    | or eax, eax; jnz .done;
+      p: poplocals
+   else
+      $0375c009 ,    | or eax, eax; jnz .done;
+   then
+   $c3adad 3,        | lodsd; lodsd; ret; .done:
+;
+exit~
+
+exit~
+
+alias: ; g;    | make the new ';'
+alias: ;; g;;  | make the new ';;'
+
+forth
+
+| for backwards compatibility
+alias: lto to
+alias: +lto +to
+
+pop~
+
+
+|||
+def: local[
+ctx: ~
+stack: loc1init loc2init ... --
+desc: =
+	Begin the definition of a set of local values for use within
+   the word being defined.
+   For example:-    
+   : myword local[ loc1 loc2 | loc3 loc4..locn -- ] ...
+   Locals definition ends with the closing ']'.
+   Those defined before the '|' get initialized from the stack.
+   Those after the '|' are not initialized, nor are they 'static'.
+   The maximum number of locals is 20 for any word, but this can be 
+   changed by changing the size of locbuf.
+   Locals are pushed and popped from the return stack on entry and
+   exit from the word, thus supporting recursion.
+   A local behaves the same way as a value, and can be used with
+   'to' '+to' and 'addr'.
+   For bacwards compatibility with the old version, the words
+   'lto' and '+lto' are retained.
+=
+
+def: lto
+ctx: ~
+stack: n <local> --
+desc: =
+   Sets the local to n. (Same as 'to')
+   Provided for backwards compatibility only. Use 'to' instead.
+=
+
+def: +lto
+ctx: ~
+stack: n <local> -- 
+desc: =
+   Adds n to the local. (Same as '+to')
+   Provided for backwards compatibility only. Use '+to' instead.
+=
+
+def: addr
+ctx: ~
+stack: <local> -- 
+desc: =
+   Puts the address of <local> on to tos. 
+   Can also be used with a value.
+=
+
+related: local[ to lto +to +lto addr value

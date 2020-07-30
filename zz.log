@@ -1,0 +1,59 @@
+This is XeTeX, Version 3.1415926-2.4-0.9998 (TeX Live 2012) (format=xetex 2012.7.11)  25 SEP 2012 12:28
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**zz
+(./zz.tex (/home/ron/texmf/tex/ron/font/libertine.tex
+(/home/ron/texmf/tex/ron/font/base.tex (/home/ron/texmf/tex/ron/basemacros.tex
+(/usr/local/texlive/2012/texmf-dist/tex/eplain/eplain.tex)
+\footparbox=\box19
+\footnotebaselineskip=\skip26
+\holdoverbox=\box20
+\tempcount=\count51
+\lheader=\toks26
+\cheader=\toks27
+\rheader=\toks28
+\lfooter=\toks29
+\cfooter=\toks30
+\rfooter=\toks31
+\preheader=\toks32
+\xheader=\toks33
+\xfooter=\toks34
+\pasuqfont=\toks35
+\headerskip=\skip27
+\footerskip=\skip28
+\footlinedim=\dimen58
+\greyboxsep=\dimen59
+\contentbox=\box21
+\bkgdbox=\box22
+\fitfontscaling=\count52
+\fitfonttoks=\toks36
+\englishpar=\toks37
+\hebrewpar=\toks38
+\engbaseskip=\skip29
+\hebbaseskip=\skip30
+\raggedskip=\skip31
+\headerfooterdim=\dimen60
+\preheadline=\toks39
+\postheadline=\toks40
+\headerbox=\box23
+\bodydim=\dimen61
+)
+\engfontdim=\dimen62
+\hebfontdim=\dimen63
+\tempdim=\dimen64
+\currentfontsize=\count53
+\currentfontstyle=\count54
+\engstrutbox=\box24
+\hebstrutbox=\box25
+))
+(/home/ron/texmf/tex/ron/font/liberation-mono.tex
+(/home/ron/texmf/tex/ron/font/base.tex))
+Underfull \vbox (badness 10000) has occurred while \output is active
+\vbox(12.0+0.0)x477.99902
+.\hbox(0.0+0.0)x477.99902, glue set 238.99951fil
+..\glue 0.0 plus 1.0fil
+..\glue 0.0 plus 1.0fil
+
+ [1] )
+Output written on zz.pdf (1 page).

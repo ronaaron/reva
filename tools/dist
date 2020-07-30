@@ -1,0 +1,27 @@
+#!/bin/bash
+# vim: ft=sh tw=0 :
+
+ver=`reva -e 'revaver# . bye'|sed -e 's/ //'g`
+zip="reva$ver.zip"
+echo "Building $zip"
+
+makezip()
+{
+	cd ..
+	zip -9qr $zip -i@reva/include.lst -x@reva/exclude.lst reva/*
+	cd reva
+}
+gensigs()
+{
+	cd ..
+	gpg --detach-sign -a $zip 
+	cd reva
+}
+uploadfiles()
+{
+	(cd ..; for x in `ls -rt|tail -n 2`; do ronware -t $x ronware/$x ; done)
+}
+
+makezip
+gensigs
+uploadfiles

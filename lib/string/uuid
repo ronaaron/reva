@@ -1,0 +1,59 @@
+| vim: ft=reva :
+| UUID library
+
+push~
+
+needs random/gm
+|                    012345678901234567890123456789012345
+create uuid-buffer " 00000000-0000-0000-0000-000000000000" here,
+
+: print 8 '0 (p.r) ;
+: uuid ( -- a b c d ) rand rand rand rand ;
+: uuid$ ( -- a n ) 
+	base @ >r hex
+	uuid
+	print uuid-buffer swap move
+	print drop dup
+	uuid-buffer 9 + 4 move 
+	4 + uuid-buffer 14 + 4 move
+
+	print drop dup
+	uuid-buffer 19 + 4 move 
+	4 + uuid-buffer 24 + 4 move
+
+	print uuid-buffer 28 + swap move
+
+	r> base !
+	uuid-buffer 36
+	;
+
+: init-uuid randomize ;
+
+' init-uuid ~sys.onstartup
+
+init-uuid
+
+hide init-uuid
+hide uuid-buffer
+
+pop~
+|||
+
+def: uuid
+stack: -- a b c d
+ctx: ~
+ver: 7.0.10
+desc: =
+	Generates 128 bits of a  "type 4" (random) UUID
+=
+
+def: uuid$
+stack: -- a n
+ctx: ~
+ver: 7.0.10
+desc: =
+	Generates a string representation of a "type 4" (random) UUID
+=
+
+
+related: uuid uuid$ 

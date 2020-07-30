@@ -1,0 +1,146 @@
+| vim: ft=reva :
+push~
+~sys ~os ~
+
+: cb-param ( n -- m ) cells rp@ 2cell+ @ + @ ;
+: cbparms rp@ cell+ ! ;inline
+: (callback) inline{ 87 1C 24 8D 44 24 08 55 56 57 8D 74 24 FC 81 EC 00 
+        10 00 00 FF D3 81 C4 00 10 00 00 5F 5E 5D 5B C3 
+        } ; 
+macro
+: callback p: (callback) p: cbparms ;
+: callback: p: : p: callback ;
+forth
+
+variable callbackn_ret
+: cb-ret ( n -- ) cells callbackn_ret @ w!  ;
+: (callback-std) inline{ 58 53 89 C3 89 E0 83 C0 04 55 56 57 52 51 89 E6 81
+        EC 00 01 00 00 E8 0F 00 00 00 81 C4 00 01 00 00
+        59 5A 5F 5E 5D 5B C2 } 
+
+		[ here callbackn_ret ! ]
+
+		| 00 00  
+		inline{ DD 00 FF E3 } ;
+macro
+: callback-std
+	p: (callback-std)
+	p: cbparms
+	;
+forth
+
+: >>r r> swap >r >r ;inline
+: r>> r> r> swap >r ;inline
+: pushTOS sp (s0) xchg >>r noop ;
+: popTOS r>> (s0) !  noop ;
+
+hide callbackn_ret
+| hide (callback)
+hide (callback-std)
+hide cbparms
+
+[IFTEST]
+| Callbacks
+variable callback-ok
+test: callbacks
+	callback-ok off
+	quote #
+		needs callbacks
+		: some-cb callback
+			callback-ok on
+			;
+	# eval
+	
+	" some-cb" eval
+	callback-ok @ -1 =
+	;
+
+[THEN]
+
+pop~
+
+|||
+
+def: cb: 
+stack:  xt stacksize <name> -- 
+ctx: ~os
+desc: =
+	REMOVED in 7.0.10
+	REPLACED by callback
+	=
+
+def: stdcb: 
+stack:  xt numparams stacksize <name> -- 
+ctx: ~os
+desc: =
+	REMOVED in 7.0.10
+	REPLACED by callback-std
+	=
+def: callback
+stack: --
+ver: 7.0.10
+ctx: ~
+desc: =
+	Indicates this word is a "callback", meant to be called from C code.  The
+	word 'callback' must be the first in the new word being defined.  It sets up
+	a mechanism whereby normal Reva words can be called.
+
+	NOTE: Any word which relies on the data stack being in the usual location
+	will not work, since the callback sets a temporary data stack for its own
+	use.
+
+	Access to the parameters passed to the callback is via the word 'cb-param'.
+
+	Example:
+
+		: my-callback  callback  0 cb-param . cr ;
+	
+	REPLACES cb:
+=
+
+def: callback-std
+stack: --
+ver: 7.0.10
+ctx: ~
+desc: =
+	Same as 'callback', but called from code using the 'stdcall' convention
+	(typically Windows callbacks).  Everything mentioned in 'callback' applies
+	to 'callback-std', but there is one difference.
+
+	A 'stdcall' word needs to 'pop' parameters it was passed.  So the usual ';'
+	word is not sufficient.  There is an additional word, 'cb-ret', which is
+	required to appear within the body of the callback.  It need only be called
+	before the actual return from the callback occurs.
+
+	REPLACES stdcb:
+=
+def: cb-param
+stack: n -- m
+ctx: ~
+desc: =
+	Retrieves the 'n'th parameter to a 'callback' or 'callback-std' word.
+
+	Because of the way it works, you must save the parameter values off if you
+	call other words which also use callbacks, within your callback word.
+=
+def: cb-ret
+stack: n -- 
+ctx: ~
+ver: 7.0.10
+desc: =
+	Sets the number of words to pop off the stack on return from a
+	'callback-std'
+=
+
+def: callback:
+stack: <name> --
+ctx: ~
+ver: 2011.1
+desc: =
+	Convenience word which creates a new word which "is" a callback.  Same thing
+	as 
+
+	  : <name> callback ... ;
+=
+
+related: callback callback: callback-std cb-param cb-ret cb: stdcb: { }

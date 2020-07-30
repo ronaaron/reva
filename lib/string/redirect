@@ -1,0 +1,67 @@
+| vim: ft=reva :
+| Redirection of 'emit' and 'type' output into a given 'string'
+
+push~
+
+~ ~priv
+variable $emit$
+variable $emit$max
+variable $emit$size
+' emit @ variable, $emit$prior
+' type @ variable, $emit$typeprior
+
+: ($emit) ( c -- )
+	| can we insert?
+	$emit$ @ $emit$max @ =if drop ;then
+	| yes, so insert the character in the correct place:
+	$emit$ @ c! $emit$ ++
+	$emit$size ++
+	;
+
+: ($type) ( a n -- )
+	0do count ($emit) loop drop ;
+
+~strings
+
+: >redir ( a n -- )
+	['] emit @ $emit$prior !
+	['] type @ $emit$typeprior !
+	1+ bounds $emit$ !  $emit$max !
+	$emit$size off
+	['] ($emit) is emit
+	['] ($type) is type
+	;
+
+: redir> ( -- a n )
+	$emit$prior @ is emit
+	$emit$typeprior @ is type
+	$emit$ @ $emit$size @ - $emit$size @
+	;
+
+pop~
+
+|||
+
+def: >redir
+ctx: ~strings
+ver: 2010.1
+stack: a n --
+desc: *
+	Begin redirection of 'emit' and 'type' output into the buffer (a,n).
+
+	'n' is the maximum number of characters which will be accepted into the
+	buffer at 'a'.  Characters after that will be dropped.
+
+	Use "redir>" to stop redirection and get the captured string.
+*
+
+def: redir>
+ctx: ~strings
+ver: 2010.1
+stack: -- a n
+desc: *
+	Stop redirection which was started with ">redir", and get the captured
+	string.
+*
+
+related: >redir redir> emit type

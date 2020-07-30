@@ -1,0 +1,77 @@
+| vim: ft=reva :
+| Creates temporary files names or directories
+
+push~ 
+
+~priv
+create tempdir$ 256 allot
+create tempfile$ 256 allot
+variable tempdir-set
+~os
+
+MAC LIN or [IF]	| Linux
+libc drop 2 func: tempnam
+
+: tempdir ( -- a n ) 
+	tempdir-set @ not if 
+		" /tmp/" tempdir$ place
+		tempdir-set on
+	then
+	tempdir$ count
+	;
+: tempfilename ( -- a n ) 
+	tempdir$ count zt " Rva" drop tempnam
+	dup zcount tempfile$ place
+	free
+	tempfile$ count
+	;
+[ELSE] | Windows
+~priv
+k32 drop 2 func: GetTempPathA
+	4 func: GetTempFileNameA
+~os
+: tempdir ( -- a n ) 
+	tempdir-set @ not if
+		255 here GetTempPathA
+		here swap tempdir$ place 
+		tempdir-set on
+	then
+	tempdir$ count
+	;
+: tempfilename ( -- a n ) 
+	tempdir zt " Rva" drop 0 tempfile$ GetTempFileNameA drop
+	tempfile$ zcount
+	;
+[THEN]
+
+: settempdir ( a n -- )
+	tempdir$ place
+	tempdir-set on
+	;
+
+:: tempdir-set off ; ~sys.onexit
+
+pop~
+
+||| 
+
+def: tempdir
+stack:  -- a n
+ctx: ~os
+desc: =
+	Returns the path for creating temporary files.
+=
+def: settempdir
+stack:  a n --
+ctx: ~os
+desc: =
+	Sets the path for creating temporary files.  If not set, will default to
+	whatever the system default is (/tmp on Linux, and GetTempPath() on
+	Win32)
+=
+def: tempfilename
+stack:  -- a n
+ctx: ~os
+desc: =
+	Creates a new temporary filename in the directory 'tempdir'.
+=

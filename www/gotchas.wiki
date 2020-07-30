@@ -1,0 +1,14 @@
+﻿<h1 align='center'>Gotchas -- potential pitfalls</h1>
+
+<b>'</b> vs <b><nowiki>[']</nowiki></b><br>
+Both of these are used to get the 'xt' of a word.  The word <b><nowiki>[']</nowiki></b> is used exclusively inside a colon-def, whereas <b>'</b> can be used both interactively and inside a colon-def -- but not with the same result as <b><nowiki>[']</nowiki></b> .  When using the single-quote inside a colon-def, it will not find the xt of the word following inside the colon-def, but will rather find the xt of the word following when the word it is defined within is executed.
+
+<b>singles, doubles and floats</b><br>
+Singles and doubles are <i>integer</i> types, not narrower forms of <i>floats</i>.
+
+<b>using a "func" as an xt</b><br>
+It is not possible to use a "func" directly as an xt, attempting to do so will usually crash.  An example of where one might try to do this is in a library <tt>onexit</tt> handler... if the library linked to has a function to de-initialize one would think it possible to just create an appropriate "func" and use <tt>' funcname onexit</tt>.  Sadly, that does not (and cannot) work.  There is an easy solution: write a wrapper:<br> <tt>: shutdownlib funcname ; ' shutdownlib onexit</tt>
+
+<b>'," etc</b><br>
+Tokens like <tt>' "</t> or <tt>'(</tt> when you see them in code are not functions. Rather, they are character constants. See [./tutorial.wiki#chario|the tutorial, character I/O section]. 
+

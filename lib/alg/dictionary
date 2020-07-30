@@ -1,0 +1,83 @@
+| vim: ft=reva :
+| dictionary data structure
+|
+| Stores data in (key,value) pairs
+
+| we cheat: sqlite makes a fantastic storage medium!
+
+push~
+~
+context: ~dict
+
+needs db/sqlite
+
+~db ~dict
+
+| dict fields:
+|   +00  sqlite handle
+|   +04  insert sql
+|   +08  find sql
+|   +0C  delete sql
+
+: new ( -- h ) 
+	4 cells allocate 
+	" :memory:" sql_open 
+	| fall-through...
+	
+: (new)
+	>r
+	r@ " create table dict (k varchar unique, v varchar );" sql_exec
+	r@ " create index kv on dict (k);" sql_exec
+	r@ over !
+	r@ " insert into dict values (:1,:2)" sql_prepare 
+		over cell+ !
+	r@ " select v from dict where k=:1" sql_prepare
+		over 2cell+ !
+	r> " delete from dict where k=:1" sql_prepare
+		over 3cell+ !
+	;
+
+: new-big ( -- h)
+	4 cells allocate 
+	0 0 sql_open  (new) ;
+
+
+: done ( h -- ) 
+	dup 3cell+ @ sql_finalize
+	dup 2cell+ @ sql_finalize
+	dup cell+ @ sql_finalize
+	dup @ sql_close free ;
+
+: insert ( k,n v,m h -- )
+	cell+ @ dup >r
+	2 2swap sql_bind_string
+	r@ 1 2swap sql_bind_string
+	r> 0 sql_pexec
+	;
+
+10000 constant found#
+variable (found) 
+: get ( k,n h -- v,m )
+	(found) @ 0if
+		found# cell+ allocate (found) !
+	then
+	(found) @ off
+	2cell+ @ dup >r 1 2swap sql_bind_string 
+	r>
+	{ 
+		0 sql_pcol_text  | a n
+		found# min (found) @ lplace
+		false 
+	} 
+	sql_pexec 
+	(found) @ lcount
+	;
+: delete ( k,n h -- )
+	3cell+ @ dup >r
+	1 2swap sql_bind_string
+	r> 0 sql_pexec
+	;
+
+pop~
+
+

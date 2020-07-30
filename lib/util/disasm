@@ -1,0 +1,1481 @@
+| vim: ft=reva :
+| Reva port of Open Firmware 386 disassembler.
+| The original license can be found at the end of the file.
+
+| Heavily modified to allow switching between 
+| postfix and prefix modes
+needs util/misc
+push~
+
+~util
+~
+context: ~disasm
+~disasm
+
+| Misc helpers
+| ============
+
+| string-table
+| ------------
+
+| A replacement for Open Firmware string-array. As my version differs from the
+| original both in the implementation details and in the usage, I've changed
+| the name as well. :)
+
+| Used in the form:
+| string-table name
+|   ," This is the first string in the table"
+|   ," this is the second one"
+|   ," and this is the third"
+| end-table-end
+
+| name is later executed as:
+
+| name ( index -- addr n)
+|   index is a number between 0 and one less than the number of strings in
+|   the array.  addr n is the corresponded string with trailing zeroes chopped
+|   Unlike the original implementation, there is no bounds checking.
+
+| In the original, `,"` compiles counted strings at `here`, then
+| `string-array-end` compiles a table of pointers to those strings.
+
+| Here, `,"` places counted strings temporarily at `scratch` and
+| `string-table-end` constructs a bit more traditional string selection table.
+
+: (string-table)     | It will be used by mnemonics ... end-mnemonics later
+    create  ( <name> -- longest tmp)
+    0
+    scratch ;
+
+: string-table
+    (string-table)
+    does>   ( index -- addr n)
+     dup cell+ -rot   @ tuck  * _+   0 chop ;
+
+: ,"  ( longest tmp -- longest' tmp')
+   >r
+   '" parse
+   rot over max  -rot
+   r@ over + 1+  -rot
+   r> place ;
+
+| Compiles the string `addr` `n1` into  a `n2`-width field at `here`,
+| padding to the right with zeros.
+: fit,  ( addr n1 n2 --)
+    swap  >r
+    here  over allot
+    dup r@ +  rot r@ -  zero
+    r>  move ;
+
+: end-string-table ( longest endptr --)
+    over dup ,  0if  2drop ;then
+    scratch do
+	dup
+	i count  dup skip
+	rot fit,
+    loop drop ;
+
+| case:
+| -----
+: case: ( n <name op0 .. opN-1> -- )
+  create
+    0do ' , loop
+  does> swap cells + @execute ;
+
+
+| Definitions taken from the Open Firmware kernel
+| /covered by the same license one can find at the end of the file/
+| -------------------------------------------
+: bwjoin  ( b.low b.hi -- word)
+    $8 <<  + ;
+
+: wljoin  ( w.low w.hi -- long)
+    $10 <<  + ;
+
+: lwsplit ( s l -- w.low w.high )  | split a long into two words
+   dup  $ffff and  swap $10 >> ;
+
+: lowmask  ( #bits -- mask )  1 swap << 1-  ;
+: lowbits  ( n #bits -- bits )  lowmask and  ;
+: bits  ( n bit# #bits -- bits )  -rot >>  swap lowbits  ;
+
+| ----------------------------------------------------------------------------
+
+| Postfix mode flag. It does not control the mode, it just shows which
+| mode we are in. To switch modes, use ~disasm.postfix and ~disasm.prefix.
+false  value postfix-mode
+
+| clears a byte-counted string at `caddr`
+: clear    ( caddr )   0 swap c! ;
+
+| allots a buffer that can hold a `len` bytes long byte-counted string
+: buffer: ( len <name> --)
+    create  here >r 1+ allot  r> clear ;
+
+
+#32  constant bl
+
+| pointer to the buffer for the string construction primitives to work on
+0 value $current
+
+| Allots a buffer that can hold a `len` bytes long counted string.
+| When <name> is invoked, it clears the buffer and makes it current.
+: $buf: ( len <name> --)
+    create 1+ allot
+    does>  dup clear to $current  ;
+
+| String construction primitives.
+: $>  ( -- a u ) $current count  ;
+: >$  ( a u -- ) $current place  ;
+: $+  ( a u -- ) $current +place  ; 
+: $+char  ( c -- )  $current c+place  ;
+: $+cstr ( ca -- )  count $current +place ;
+: $len ( -- n )  $current c@ ;
+
+: $?- ( n -- n' )  dup 0 <if  '- $+char  negate  then ;
+
+| Many string/argument building functions have dot in their names,
+| for historical reasons
+: .[  '[ $+char ;
+: .]  '] $+char ;
+: .space  bl $+char ;
+: .u ( u -- )  hex#  $+ ;
+: .n ( n -- )  $?- .u ;
+
+: $tab  ( n -- )
+    $len -  1 max  0do  .space  loop ;
+
+
+#20  buffer: mnemonic         | Instruction mnemonic
+#255 buffer: argbuf           | Storage area for argument strings
+
+#60  $buf: new-arg            | most of the arguments are constructed here
+#40  $buf: new-ea             | used for complex addressing modes by .sib, etc.
+#255 $buf: new-instruction    | entire disassmebled instruction
+
+| list (actually stack) of instruction arguments
+argbuf value arg^
+6 stack: args
+
+| adds the `a n` string to the arguments
+: >arg   ( a n -- )
+    arg^ dup args push
+    over 1+ +to arg^
+    place ;
+
+| adds the string at `$current` to the argument list
+| a typical argument construction looks like:
+|  new-arg  ... [some string building code] ... $>arg
+: $>arg  $> >arg ;
+
+| when true, 'far' will be added to the mnemonic
+false value far?
+: far  true to far? ;
+: near false to far? ;
+
+| words that set/alter mnemonic tend to be written in uppercase
+: ?FAR
+    far? 0;drop
+    new-arg
+    " far"
+    postfix-mode if
+	$+ .space mnemonic $+cstr
+    else
+	mnemonic $+cstr .space $+
+    then
+    $> mnemonic place ;
+
+
+| Cleanup function. Must be called before disassembling of 
+| of a next instruction starts.
+: clear-args
+    mnemonic clear
+    near
+    argbuf to arg^
+    args dup !  ;
+
+ 
+| formats instruction string for printing
+defer (.instruction)
+
+#35 value  postfix-mnemonic-column
+: (.postfix)
+    args stack-size 
+    ?dup if
+	0do
+	    args pop $+cstr
+	    args stack-size if
+		"   " $+
+	    then
+	loop
+    then
+    postfix-mnemonic-column $tab
+    mnemonic $+cstr  ;
+
+9 value prefix-operands-column
+: (.prefix)
+    mnemonic $+cstr
+    prefix-operands-column $tab
+    args stack-size 0 ?do
+	remains dup args peek-n $+cstr
+	if  " , " $+ then
+    loop ;
+
+#45 value instruction-width
+
+| one of the few words that actually type something
+: .instruction 
+    ?FAR
+    new-instruction
+    (.instruction) 
+    instruction-width $tab
+    $> type ;
+
+
+| Shortcuts for setting mnemonics
+: I! mnemonic place ;
+
+macro
+: I:   parsews (") | "
+       p: I! ;
+forth
+
+| Like string-table, but sets mnemonic when invoked
+: mnemonics  ( <name> -- longest buffer )
+    (string-table)
+    does>  super> string-table I! ;
+
+alias: end-mnemonics end-string-table
+
+
+variable instruction      | byte being disassembled
+variable end-found
+variable pc               | address of the next byte to process
+
+: op8@   ( -- b )  pc @  c@   pc ++  ;
+: op16@  ( -- w )  op8@   op8@   bwjoin  ;
+: op32@  ( -- l )  op16@  op16@  wljoin  ;
+
+
+| The following two words were implemented using a mix of logical and
+| arithmetic shifts.
+| I've failed to find all those shift primitives in the reva kernel,
+| so I rewrote the whole thing :)  -jsv-
+: bext  ( b -- l )  inline{ 66 98 } | cbw, falling through to
+: wext  ( w -- l )  inline{ 98 }    | cwde
+;
+
+true value op32?
+true value ad32?
+
+: opv@  ( -- l | w )  op32?  if  op32@  else  op16@  then  ;
+: adv@  ( -- l | w )  ad32?  if  op32@  else  op16@   then  ;
+
+: op:
+    op32?
+    false to op32?
+    later to op32?  ;
+
+: ad:
+    ad32?
+    false to ad32?
+    later to ad32? ;
+
+: get-op  ( -- )  op8@ instruction !  ;
+
+: ibits  ( right-bit #bits -- field )
+   instruction @ -rot bits ;
+
+0 value wbit
+: lowbits  ( -- n )  0 3 ibits  ;
+: low4bits ( -- n )  0 4 ibits  ;
+: midbits  ( -- n )  3 3 ibits  ;
+: hibits   ( -- n )  6 2 ibits  ;
+
+
+: reg?  ( -- ?)  hibits %11 = ;
+
+| runtime: executes either <reg> or <mem> 
+| depending on the reg field's value
+macro
+: ?reg: ( <reg> <mem> --)
+    p: reg?  p: if
+	' compile
+    p: else
+	' compile
+    p: then ;
+forth
+
+
+| these variables must be filled by `known-xt`:
+variable xt-name     | pointer to the counted string
+variable xt-offset   | always positive  
+
+defer:  known-xt ( addr -- addr' | 0 ) drop false ;
+
+
+defer (symbolic-address)
+defer (numeric-address)
+
+| modifier for memory references, poiner to a counted string
+nul value memmod
+
+| runtime: makes `memmod` point to <text>
+: opsize: ( <text> --)
+    create  last @ >name ,
+    does>   @ to memmod ;
+
+opsize: byte
+opsize: word
+opsize: dword
+opsize: qword
+opsize: tbyte
+
+
+| finalizes the construction of memory reference, adding `memmod`
+| where appropriate
+: ea>arg
+    memmod c@   $current
+    new-arg
+
+    postfix-mode if
+	$+cstr 
+	if   .space memmod $+cstr  then
+    else
+	swap  if  memmod $+cstr .space  then
+	$+cstr
+    then
+    nul to memmod
+    $>arg  ;
+
+
+| "' <symbol> #", 
+| "' <symbol> <offset> + ( <address> ) #", etc.
+: (postfix-symbolic-address) ( imm32 indirect? -- )
+    >r
+    " ' " $+
+    xt-name @ $+cstr .space
+    xt-offset @ ?dup if
+	.u "  + " $+
+	"  ( " $+   .u   "  ) " $+  
+    else
+	drop
+    then
+    '# $+char
+    r> if  ') $+char  then 
+; 
+
+| "symbol", "[symbol + offset] ; <address>", etc.
+: (prefix-symbolic-address) ( imm32 indirect? -- )
+    >r
+    r@ if  .[  then
+    xt-name @ $+cstr
+    xt-offset @ ?dup if  
+	"  + "  $+  .u   
+    else
+	drop 0
+    then
+    r> if  .]  then 
+    0; #15 $tab  " ; " $+  .u  ;
+
+| "<direct>"  or "[<indirect>]"
+: (prefix-numeric-address)  ( imm32 indirect? -- )
+    tuck
+    if  .[  then
+    .u
+    if  .]  then  ;
+
+| "<direct> #" or "<indirect> #)"
+: (postfix-numeric-address)  ( imm32 indirect? -- )
+    swap .u "  #" $+  
+    if  ')  $+char  then ;
+
+| handles all immediate values
+: immed ( imm32 indirect? -- )
+    dup -rot
+    new-ea  
+    over known-xt if
+	(symbolic-address)			
+    else
+	(numeric-address)
+    then
+    if ea>arg  else $>arg  then ;
+
+: imm  false immed ;
+: [imm]  true immed ;
+
+
+| Used when "w" field contains 0
+string-table >reg8
+," al" ," cl" ," dl" ," bl" ," ah" ," ch" ," dh" ," bh"
+end-string-table
+
+| Used when the instruction implies a 16-bit register
+string-table >reg16
+," ax" ," cx" ," dx" ," bx" ," sp" ," bp" ," si" ," di"
+end-string-table
+
+| Used when "w" field contains 1, and when there is no "w" field
+string-table >regw
+|    0       1       2       3       4       5       6       7
+," eax" ," ecx" ," edx" ," ebx" ," esp" ," ebp" ," esi" ," edi"
+end-string-table
+
+: >reg  ( -- adr len )  >regw  op32? 0if  1 /string  then  ;
+: >areg  ( -- adr len )  >regw ad32? 0if  1 /string  then  ;
+
+: >greg  ( -- adr len )  wbit  if  >reg  else  >reg8 then  ;
+
+: .reg   ( reg -- )  >reg  >arg  ;
+: .reg8  ( reg -- )  >reg8 >arg  ;
+: .greg ( reg)  >greg >arg ;
+
+: get-disp  ( mod -- disp )
+   case
+   1  of  op8@ bext    endof
+   2  of  adv@  ad32? 0if  wext  then  endof
+	drop 0
+   endcase
+;
+
+| Complex 32-bit addressing modes
+| -------------------------------
+: ?+  ( -- )
+   $len 1 >if  '+ $+char then  ;
+
+: ?-  ( disp -- )
+   $len 1 >if  $?-  then ;
+
+-1 constant nobase
+
+: .ereg  ( reg --)  >regw $+ ;
+
+: .[ereg]  ( reg --) .space .[ .ereg .] ;
+
+: .scale  ( scale)
+    '* $+char   1 swap << .n  ;
+
+: ?.scale ( scale) 0; .scale ;
+
+: ?.disp  ( disp)
+    0;  dup 0 <if  ?-  else  ?+ then  .u ;
+
+: index? ( index -- ?)  %100 <> ; 
+
+: (postfix-sib) ( scale index base disp)
+    .n
+    dup nobase  =if
+	drop  "  [nob]" $+
+    else
+	.[ereg]
+    then
+    dup index? if
+	.[ereg] .space .scale
+    else
+	2drop
+    then ;
+
+: (prefix-sib) ( scale index base disp)
+    .[ >r
+    dup nobase <>if  .ereg  else  drop  then
+    dup index? if
+	?+ .ereg ?.scale
+    else
+	2drop
+    then
+    r> ?.disp
+    .] ;
+
+defer (sib)
+
+| Handles base+index*scale+displacement addressing modes
+| It's used also for formatting base+displacement addresses 
+| (despite those are coded in mod/rm with no actual sib present)
+: .sib  ( scale index base disp)
+    new-ea (sib)  ea>arg  ;
+
+: sib?   ( reg -- ?) %100 = ;  | tests for presence of s-i-b
+
+: disp32-only? ( reg mod -- ?)
+    0 = and %101 = ;
+
+: .ea32  ( reg mod)
+    >r
+    dup sib? if
+	drop get-op
+	hibits midbits lowbits	      ( scale index base)
+	dup %101 =if                  | %101 means nobase if mod = 0, [ebp] otherwise
+	    r> ?dup 0if
+		drop nobase %10       | special case: index*scale + disp32
+	    then
+	    >r
+	then
+    else                              | no actual si byte
+	dup r@  disp32-only? if
+	    drop rdrop adv@ [imm]
+	;then
+	0 %100 rot                    | base and displacement, no scaled index
+    then
+    r> get-disp .sib ;
+
+
+| 16-bit addressing
+| -----------------
+
+string-table modes16
+   ," bx+si"
+   ," bx+di"
+   ," bp+si"
+   ," bp+di"
+   ," si"
+   ," di"
+   ," bp"
+   ," bx"
+end-string-table
+
+: disp16-only?  ( reg mod - ?) 0 = and 6 = ;
+
+: get-disp16  ( mod)
+    case
+	1 of  op8@ bext endof
+	2 of  op16@ bext endof
+	    drop 0
+    endcase  ;
+
+: (prefix-ea16) ( reg mod -- )
+    .[  swap  modes16 $+  get-disp16 ?.disp  .]  ;
+
+: (postfix-ea16) ( reg mod -- )
+    get-disp16  .n .space .[  modes16 $+ .]   ;
+
+defer (ea16)
+
+: .ea16  ( reg mod -- )
+    new-ea
+    2dup disp16-only? if
+	2drop op16@ wext [imm]
+    else
+	(ea16)
+    then
+    ea>arg  ;
+
+
+| Argument builder that corresponds to "Ea" operand type 
+| in the intel and amd opcode tables. 
+: .ea  ( -- )
+   lowbits
+   reg? if  .greg  ;then   
+   hibits 
+   ad32?  if  .ea32  else .ea16  then  ;
+
+
+| Mode swithing
+: postfix
+    true to postfix-mode
+    ['] (.postfix)       is (.instruction)
+    ['] (postfix-sib)    is (sib)
+    ['] (postfix-ea16)   is (ea16) 
+    ['] (postfix-numeric-address) is (numeric-address)
+    ['] (postfix-symbolic-address) is (symbolic-address)
+;
+
+: prefix
+    false to postfix-mode
+    ['] (.prefix)       is (.instruction)
+    ['] (prefix-sib)    is (sib)
+    ['] (prefix-ea16)   is (ea16)
+    ['] (prefix-numeric-address) is (numeric-address)
+    ['] (prefix-symbolic-address) is (symbolic-address)
+;
+
+prefix
+
+string-table >segment
+   ," es"  ," cs"  ," ss"  ," ds"  ," fs"  ," gs"
+end-string-table
+
+mnemonics >binop
+   ," add"  ," or"  ," adc"  ," sbb"  ," and"  ," sub"  ," xor"  ," cmp"
+end-mnemonics
+
+mnemonics >unop
+   ," inc"  ," dec"  ," push"  ," pop"
+end-mnemonics
+
+: .segment  ( -- )  3 2 ibits  >segment >arg  ;
+
+mnemonics >adjust
+   ," daa"  ," das"  ," aaa"  ," aas"
+end-mnemonics
+
+0 value reg-field
+: get-ea  ( -- )  get-op  midbits  to reg-field  ;
+: get-ev ( -- )   get-ea  1 to wbit  ;
+
+: sreg  ( -- )  reg-field  >segment >arg  ;
+: .r#   ( # a u -- ) new-arg   >$  .u   $>arg  ;
+
+: .mm   ( reg# -- )  " mm" .r# ;
+: mreg  ( -- )  reg-field  .mm  ;
+: .mea  ( -- )  reg? if  lowbits .mm  else  .ea  then  ;
+
+: gb/v  ( -- )  reg-field  .greg  ;
+: ib    ( -- )  op8@ bext  imm  ;
+: iub   ( -- )  op8@  imm ;
+: iw    ( -- )  op16@ imm ;
+: iv    ( -- )  opv@ imm  ;
+: iuv   ( -- )  adv@ imm  ;
+: [iuv] ( -- )  adv@ [imm]  ;
+: ib/v ( -- )  wbit  if  opv@  else  op8@  then  imm  ;
+: al/x  ( -- )  0 .greg ;
+: cl  ( -- )  " cl" >arg ;
+
+
+| Often used instructions
+: ???   ( -- )  I: ??? ;
+: CALL  ( -- )  I: call ;
+: IN    ( -- )  I: in     ;
+: JMP   ( -- )  I: jmp  end-found on  ;
+: MOV   ( -- )  I: mov  ;
+: OUT   ( -- )  I: out    ;
+: POP   ( -- )  I: pop ;
+: PUSH  ( -- )  I: push  ;
+: RET   ( -- )  I: ret  end-found on  ;
+: TEST  ( -- )  I: test ;
+: XCHG  ( -- )  I: xchg ;
+
+: .mode  ( mode -- )
+   1 >>
+   case
+      0  of  get-ea  .ea   gb/v  endof
+      1  of  get-ea  gb/v  .ea   endof
+      2  of          al/x  ib/v  endof
+      drop
+   endcase
+;
+
+
+string-table >cond
+   ," o"  ," no"  ," b"  ," ae"  ," e"  ," ne"  ," be"  ," a"
+   ," s"  ," ns"  ," pe" ," po"  ," l"  ," ge"  ," le"  ," g"
+end-string-table
+
+: showbranch  ( offset -- )
+   pc @  op32?  if         ( offset pc )
+      +                    ( pc' )
+   else                    ( offset pc )
+      lwsplit  -rot        ( pc.high offset pc.low )
+      + $ffff and          ( pc.high pc.low' )
+      swap wljoin          ( pc' )
+   then                    ( pc' )
+   imm  ;
+
+: CC ( a u -- ) new-arg  >$ low4bits >cond $+  $> I! ;
+
+: jb  ( -- )  op8@ bext  showbranch  ;
+: jv  ( -- )  opv@       showbranch  ;
+
+: .jcc  ( -- )  " j" CC   jb  ;
+
+: reg,  ( -- )    get-ea reg-field .reg    ;
+
+: ea,g  ( -- )  get-ea  .ea  gb/v  ;
+: ev,g  ( -- )  get-ev  .ea  gb/v  ;
+: g,ea  ( -- )  get-ea  gb/v .ea  ;
+: g,ev  ( -- )  reg, 1 to wbit .ea ;
+
+ 
+: .cmovcc ( --) " cmov" CC    g,ev ;
+
+: decode-op  ( -- high4bits )  get-op   0 1 ibits  to wbit  4 4 ibits   ;
+
+mnemonics >grp6
+   ," sldt"  ," str"  ," lldt"  ," ltr"  ," verr"  ," verw"
+end-mnemonics
+
+mnemonics >grp8
+   ," ???"  ," ???"  ," ???"  ," ???"  ," bt"  ," bts"  ," btr"  ," btc"
+end-mnemonics
+
+: unimp  ( -- )  ??? drop ;
+: .ew  ( -- )  op: .ea ;
+
+mnemonics >grp7m
+   ," sgdt" ," sidt" ," lgdt" ," lidt" ," smsw" ," ???" ," lmsw" ," invlpg"
+end-mnemonics
+
+mnemonics >grp7r1
+   ," monitor" ," mwait" ," ???" ," ???"
+end-mnemonics
+
+mnemonics >grp7r2
+   ," xgetbv" ," xsetbv" ," ???" ," ???"
+end-mnemonics
+
+mnemonics >grp7r2
+   ," xgetbv" ," xsetbv" ," ???" ," ???"
+end-mnemonics
+
+mnemonics >grp7r7
+   ," swapgs" ," rdtscp" ," ???" ," ???"
+end-mnemonics
+
+: .grp7
+    get-ea
+    reg? if
+	midbits case
+	   1 of lowbits >grp7r1 ;; endof
+	   2 of lowbits >grp7r2 ;; endof
+	   7 of lowbits >grp7r7 ;; endof
+	     drop
+	endcase
+    then
+    midbits  dup >grp7m 
+    4  =if   .ea   else   .ew  then  ;
+
+: 2b0op  ( -- )
+   low4bits  case
+	 0 of
+	    get-ev  midbits dup >grp6
+	    0if .ea  else   .ew   then
+	 endof
+	 1 of  .grp7    endof
+	 2 of  I: lar  g,ev  endof
+	 3 of  I: lsl  g,ev  endof
+	 5 of  I: syscall endof
+	 6 of  I: clts    endof
+	 7 of  I: sysret  endof
+	 8 of  I: invd    endof
+	 9 of  I: wbinvd  endof
+	$b of  I: ud2     endof
+	unimp
+   endcase
+;
+
+: 2b1op
+    low4bits $f =if
+      I: nop get-ea .ea 
+    else
+      ???
+    then ;
+
+
+| Don't bother to say "byte" for register direct addressing mode
+: ?.byte  ( -- )  reg? not  wbit 0 =  and   if  byte  then  ;
+
+: r#  ( c -- ) new-arg $+char  'r $+char  reg-field .u  $>arg  ;
+: movspec  ( -- )
+   MOV
+   1 to wbit		| These are always 32 bits
+   low4bits  get-ea  case
+	 2 of   'c r# .ea   endof
+	 3 of   'd r# .ea   endof
+	 6 of   't r# .ea   endof
+	 0 of   .ea  'c r#  endof
+	 1 of   .ea  'd r#  endof
+	 4 of   .ea  't r#  endof
+	    unimp
+   endcase
+;
+
+: .grp15 ( -- )
+    get-ea
+    reg? if
+	midbits case
+	    5 of I: lfence endof
+	    6 of I: mfence endof
+	    7 of I: sfence endof
+		unimp
+	endcase
+    else
+	midbits case
+	    0 of I: fxsave   .ea endof
+	    1 of I: fxrstor  .ea endof
+	    2 of I: ldmxcsr  .ea endof
+	    3 of I: stmxcsr  .ea endof
+	    7 of I: clflush  .ea endof
+	    unimp
+	endcase
+    then
+;
+
+: 2baop  ( -- )
+   low4bits  case
+	 0 of  PUSH  " fs" >arg endof
+	 1 of  POP   " fs" >arg  endof
+	 2 of  I: cpuid      endof
+	 3 of  I: bt                ea,g  endof
+	 4 of  I: shld   ev,g  ib  endof
+	 5 of  I: shld   ev,g  cl  endof
+	 8 of  PUSH  " gs" >arg  endof
+	 9 of  POP   " gs" >arg  endof
+	$a of  I: rsm  end-found on  endof
+	$b of  I: bts               ea,g  endof
+	$c of  I: shrd   ev,g  ib  endof
+	$d of  I: shrd   ev,g  cl  endof
+	$e of  .grp15  endof
+	$f of  I: imul   g,ea  endof
+	    unimp
+   endcase
+;
+| Decode operands for lds,.lgs,lss instructions
+: .lfp  ( -- )   get-ea midbits .reg  .ea   ;
+
+: ?.b/w  ( -- )
+   reg? 0if
+      wbit  if  word  else  byte  then
+   then ;
+
+: 2bbop  ( -- )
+   low4bits  case
+       0 of  I: cmpxchg           ea,g  endof
+       1 of  I: cmpxchg           ea,g  endof
+       2 of  I: lss    .lfp               endof
+       3 of  I: btr      ea,g       endof
+       4 of  I: lfs    .lfp               endof
+       5 of  I: lgs    .lfp               endof
+       6 of  I: movzx  reg,  ?.b/w  .ea   endof
+       7 of  I: movzx  reg,  ?.b/w  .ew   endof
+      $a of  get-ev midbits >grp8 .ea ib    endof
+      $b of  I: btc      ea,g       endof
+      $c of  I: bsf    g,ev               endof
+      $d of  I: bsr    g,ev               endof
+      $e of  I: movsx  reg,  ?.b/w  .ea   endof
+      $f of  I: movsx  reg,  ?.b/w  .ew   endof
+         unimp
+   endcase
+;
+: 2bcop  ( -- )
+   low4bits  case
+      0 of  I: xadd    ea,g  endof
+      1 of  I: xadd    ea,g  endof
+         dup 8 <if
+            unimp
+         else
+            I: bswap   8 - .reg
+         then
+   endcase
+;
+: 2b6op  ( -- )
+   low4bits  case
+      $e of  I: movd  get-ev mreg .ea  endof
+      $f of  I: movq  get-ev mreg .mea endof
+      unimp
+   endcase
+;
+: 2b7op  ( -- )
+   low4bits  case
+       7 of  I: emms  endof
+       8 of  I: svdc  get-ev  .ea  sreg endof
+       9 of  I: rsdc  get-ev  sreg .ea  endof
+      $e of  I: movd  get-ev  .ea  mreg endof
+      $f of  I: movq  get-ev  .mea mreg endof
+	unimp
+   endcase
+;
+
+mnemonics  >msrop
+    ," wrmsr"    ," rdtsc"   ," rdmsr" ," rdpmc"
+    ," sysenter" ," sysexit" ," ???"   ," getsec"
+end-mnemonics
+
+: msrop  ( -- )
+    low4bits  dup 8 <if
+	>msrop
+    else
+	unimp
+    then ;
+
+: .2byte  ( -- )
+   decode-op  case
+      0 of  2b0op  endof
+      1 of  2b1op  endof
+      2 of  movspec  endof
+      3 of  msrop    endof
+      4 of  .cmovcc  endof
+      6 of  2b6op    endof
+      7 of  2b7op    endof
+      8 of  " j"   CC   jv  endof
+      9 of  " set" CC   0 to wbit  get-ea  .ea  endof
+     $a of  2baop  endof
+     $b of  2bbop  endof
+     $c of  2bcop  endof
+         unimp
+   endcase
+;
+: .wierd  ( -- )
+   instruction @  $f =if  .2byte  ;then
+   instruction @  $21 and
+   case
+       0  of  PUSH    .segment   endof
+       1  of  POP     .segment   endof
+     $20  of           .segment  ." :"  endof
+     $21  of  3 2 ibits >adjust  endof
+	     drop
+   endcase
+;
+: .2op  ( -- )
+   lowbits 5 >if
+      .wierd
+   else
+      midbits >binop  lowbits .mode
+   then
+;
+: .1op  ( -- )
+   3 2 ibits  >unop lowbits .reg
+;
+
+defer dis-body
+
+: dis-op:  ( -- )
+    op: dis-body  ;
+
+: dis-ad:  ( -- )
+    ad: dis-body  ;
+
+
+: ?w/d  op32? if  'd  else  'w  then  mnemonic c+place ;
+
+: g?.ea
+    get-ea
+    reg-field dup    .greg
+    hibits %11 =  swap lowbits =  and  | reg and reg r/m are the same register
+    0if
+	.ea
+    then
+;
+
+: .op6  ( -- )
+   low4bits case
+      0 of  I: pushad endof
+      1 of  I: popad  endof
+      2 of  I: bound    get-ea reg-field .reg .ea  endof
+      3 of  I: arpl     op: ea,g   endof
+      4 of  ." fs:"  endof
+      5 of  ." gs:"  endof
+      6 of  dis-op:  endof
+      7 of  dis-ad:  endof
+      8 of  PUSH    iv  endof
+      9 of  I: imul  g?.ea iv  endof
+     $a of  PUSH    ib  endof
+     $b of  I: imul  g?.ea ib  endof
+     $c of  I: insb     endof
+     $d of  I: ins   ?w/d endof
+     $e of  I: outsb      endof
+     $f of  I: outsd ?w/d endof
+            drop
+   endcase
+;
+
+: grp1op  ( -- )  get-ea  midbits >binop  ;
+
+: .op8  ( -- )
+   low4bits  case
+      0 of  grp1op   ?.byte .ea iub  endof
+      1 of  grp1op          .ea iv   endof
+      2 of  grp1op   ?.byte .ea ib   endof
+      3 of  grp1op          .ea ib   endof
+      4 of  TEST           ea,g  endof
+      5 of  TEST           ea,g  endof
+      6 of  XCHG  ea,g  endof
+      7 of  XCHG  ea,g  endof
+      8 of  MOV            ea,g  endof
+      9 of  MOV            ea,g  endof
+     $a of  MOV            g,ea  endof
+     $b of  MOV            g,ea  endof
+     $c of  MOV  get-ev  .ea   sreg  endof
+     $e of  MOV  get-ev  sreg .ea   endof
+     $d of  I: lea   g,ea  endof
+     $f of  POP  get-ea  .ea  endof
+	    drop
+   endcase
+;
+
+: ap  ( -- )
+    new-arg
+    far
+    opv@ op16@
+    postfix-mode if
+	swap .u .space .u "  #" $+
+    else
+	.u " :" $+ .u
+    then
+    $>arg
+    end-found on
+;
+
+mnemonics >8line-ops
+  ," wait"  ," pushfd" ," popfd" ," sahf" ," lahf"
+end-mnemonics
+
+: .op9  ( -- )
+    low4bits                                                      ( low4bits )
+    ?dup  0if  I: nop  ;then
+    dup 8 <if  I: xchg .reg  " eax" >arg  ;then          ( low4bits )
+    case
+	8  of    op32? if  I: cwde  else  I: cbw  then  endof
+	9  of    op32? if  I: cdq   else  I: cwd  then  endof
+	$a of    CALL  ap   endof
+	    $b -  >8line-ops
+    endcase
+;
+
+: .opa  ( -- )
+   low4bits case
+      0 of  MOV  al/x  [iuv]  endof
+      1 of  MOV  al/x  [iuv]  endof
+      2 of  MOV  [iuv] al/x  endof
+      3 of  MOV  [iuv] al/x  endof
+      4 of  I: movsb     endof
+      5 of  I: movs ?w/d endof
+      6 of  I: cmpsb     endof
+      7 of  I: cmps ?w/d endof
+      8 of  I: test  al/x ib/v  endof
+      9 of  I: test  al/x ib/v  endof
+     $a of  I: stosb      endof
+     $b of  I: stos ?w/d  endof
+     $c of  I: lodsb      endof
+     $d of  I: lods ?w/d  endof
+     $e of  I: scasb      endof
+     $f of  I: scas ?w/d  endof
+	    drop
+   endcase
+;
+mnemonics >grp2-op
+   ," rol"   ," ror"  ," rcl"  ," rcr"  ," shl"  ," shr"  ," sal"  ," sar"
+end-mnemonics
+
+: grp2op  ( -- )  get-ea  midbits >grp2-op  ;
+
+: .opc  ( -- )
+   low4bits case
+      0 of  grp2op        ?.byte .ea ib    endof
+      1 of  grp2op               .ea ib    endof
+      2 of  RET           iw               endof
+      3 of  RET                            endof
+      4 of  I: les        .lfp             endof
+      5 of  I: lds        .lfp             endof
+      6 of  I: mov get-ea  ?.byte .ea ib/v endof
+      7 of  I: mov get-ea         .ea ib/v endof
+      8 of  I: enter   iw ib               endof
+      9 of  I: leave                       endof
+     $a of  RET             far  iw        endof
+     $b of  RET             far            endof
+     $c of  I: int    " 3" >arg            endof
+     $d of  I: int    iub                  endof
+     $e of  I: into                        endof
+     $f of  I: iretd  end-found on         endof
+	    drop
+   endcase
+;
+
+| ----------
+|    FPU
+| ----------
+
+
+| Formatting
+: fmem16    word   .ea  ;
+: fmem32    dword  .ea  ;
+: fmem64    qword  .ea  ;
+: fmem80    tbyte  .ea  ;
+
+: single-real      fmem32 ;
+: double-real      fmem64 ;
+: extended-real    fmem80 ;
+: dword-integer    fmem32 ;
+: qword-integer    fmem64 ;
+: word-integer     fmem16 ;
+: packed-bcd       .ea ;
+
+
+: st(i)    " st" .r# ;
+
+: sti      lowbits st(i) ;
+: st0      0 st(i)  ;
+
+
+: st0,i     st0 sti ;
+: sti,0     sti st0 ;
+
+: ?sti  lowbits 1 <>  postfix-mode or  if  sti  then ;
+: ?sti,0    
+    postfix-mode if 
+	sti,0  
+    else  
+	lowbits 1 <>  if  sti  then 
+    then ;
+
+| fadd, fiadd, faddp, etc.
+| ideally, com & comp should be handled a bit differently
+string-table >fbinop
+    ," add" ," mul"  ," com" ," comp"
+    ," sub" ," subr" ," div" ," divr"
+end-string-table
+
+| the order of operators sometimes changes to
+| "... subr, sub, divr, div"
+: midbits' midbits dup 3 >if  1 xor  then ;
+
+: .fOP  ( n)  new-arg  'f $+char  >fbinop $+  $> I! ;
+: .fiOP ( n)  new-arg  " fi" >$   >fbinop $+  $> I! ;
+: .fOPp ( n)  new-arg  'f $+char  >fbinop $+  'p $+char  $> I!  ;
+
+
+| Escape Opcodes with D8 as First Byte
+: D8.esc  midbits .fOP  ?reg: st0,i single-real ;
+
+
+| Escape Opcodes with DB as First Byte
+mnemonics >D9r-ops
+    ," fchs"    ," fabs"    ," ???"     ," ???"
+    ," ftst"    ," fxam"    ," ???"     ," ???"
+    ," fld1"    ," fldl2t"  ," fldl2e"  ," fldpi"
+    ," fldlg2"  ," fldln2"  ," fldz"    ," ???"
+    ," f2xm1"   ," fyl2x"   ," fptan"   ," fpatan"
+    ," fxtract" ," fprem1"  ," fdecstp" ," fincstp"
+    ," fprem"   ," fyl2xp1" ," fsqrt"   ," fsincos"
+    ," frndint" ," fscale"  ," fsin"    ," fcos"
+end-mnemonics
+
+: f.D9m
+    midbits case
+	0 of  I: fld      single-real  endof
+	1 of  ???                     endof
+	2 of  I: fst     single-real  endof
+	3 of  I: fstp    single-real  endof
+	4 of  I: fldenv   .ea   endof
+	5 of  I: fldcw    .ea   endof
+	6 of  I: fstenv   .ea   endof
+	7 of  I: fstcw    .ea   endof
+    endcase  ;
+
+: f.D9r
+    midbits case
+	0 of  I: fld  sti   endof
+	1 of  I: fxch ?sti  endof
+	2 of  lowbits 0if  I: fnop  else  ???  then  endof
+	3 of  ???  endof
+	  4 - 8 * lowbits + >D9r-ops 
+    endcase  ;
+
+: D9.esc   ?reg: f.D9r f.D9m ;
+
+
+| Escape Opcodes with DA as First Byte
+: f.DAm    midbits .fiOP  dword-integer ;
+
+: f.DAr
+    midbits case
+	0 of  I: fcmovb   st0,i endof
+	1 of  I: fcmove   st0,i endof
+	2 of  I: fcmovbe  st0,i endof
+	3 of  I: fcmovu   st0,i endof
+	5 of  lowbits 1 =if  I: fucompp  else  ??? then  endof
+	    unimp
+    endcase  ;
+
+: DA.esc   ?reg: f.DAr f.DAm ;
+
+| Escape Opcodes with DB as First Byte
+: f.DBm
+    midbits case
+	0 of  I: fild    dword-integer endof
+	1 of  I: fisttp  dword-integer endof
+	2 of  I: fist    dword-integer endof
+	3 of  I: fistp   dword-integer endof
+	5 of  I: fld     extended-real endof
+	7 of  I: fstp    extended-real endof
+	    unimp
+    endcase  ;
+
+
+: f.DBr
+    midbits case
+	0 of  I: fcmovnb  st0,i endof
+	1 of  I: fcmovne  st0,i endof
+	2 of  I: fcmovnbe st0,i endof
+	3 of  I: fcmovnu  st0,i endof
+	4 of
+	    lowbits 
+		case
+		2 of I: fclex endof
+		3 of I: finit endof
+		4 of I: fnsetpm endof
+		    unimp
+	    endcase
+	endof
+	5 of  I: fucomi   st0,i endof
+	6 of  I: fcomi    st0,i endof
+	    unimp
+	endcase  ;
+
+: DB.esc  ?reg: f.DBr f.DBm  ;
+
+
+| Escape Opcodes with DC as First Byte
+: f.DCr   midbits' .fOP  sti,0 ;
+: f.DCm   midbits  .fOP  double-real ;
+
+: DC.esc  ?reg: f.DCr f.DCm ;
+
+
+| Escape Opcodes with DD as First Byte
+: f.DDm
+    midbits case
+	0 of  I: fld    double-real    endof
+	1 of  I: fisttp qword-integer  endof
+	2 of  I: fst    double-real    endof
+	3 of  I: fstp   double-real    endof
+	4 of  I: frstor .ea            endof
+	6 of  I: fsave  .ea            endof
+	7 of  I: fstsw  .ea            endof
+	    unimp
+    endcase  ;
+
+: f.DDr
+    midbits case
+	0 of  I: ffree  sti    endof
+	2 of  I: fst    sti    endof
+	3 of  I: fstp   sti    endof
+	4 of  I: fucom  st0,i  endof
+	5 of  I: fucomp st0,i  endof
+	    unimp
+    endcase  ;
+
+: DD.esc  ?reg:  f.DDr f.DDm ;
+
+
+| Escape Opcodes with DE as First Byte
+: f.DEm   midbits .fiOP  word-integer ;
+
+: f.DEr
+    midbits case
+	2 of  ??? ;; endof
+	3 of  lowbits 1 =if
+		I: fcompp
+	      else
+		???
+	      then
+	  ;;
+	  endof
+	  drop
+    endcase
+    midbits' .fOPp ?sti,0  ;
+
+: DE.esc   ?reg: f.DEr f.DEm ;
+
+
+| Escape Opcodes with DF As First Byte
+
+: f.DFm
+    midbits case
+	0 of   I: fild    word-integer  endof
+	1 of   I: fisttp  word-integer  endof
+	2 of   I: fist    word-integer  endof
+	3 of   I: fistp   word-integer  endof
+	4 of   I: fbld    packed-bcd    endof
+	5 of   I: fild    qword-integer endof
+	6 of   I: fbstp   packed-bcd    endof
+	7 of   I: fistp   qword-integer endof
+    endcase  ;
+
+: f.DFr
+    midbits case
+	4 of  lowbits 0if  I: fstsw " ax" >arg else ??? then  endof
+	5 of  I: fucomip st0,i  endof
+	6 of  I: fcomip  st0,i  endof
+	    unimp
+    endcase  ;
+
+: DF.esc  ?reg: f.DFr f.DFm ;
+
+
+8 case: fpu.op
+    D8.esc  D9.esc  DA.esc  DB.esc  DC.esc  DD.esc  DE.esc  DF.esc
+
+: .fescape  drop  lowbits  get-op fpu.op ;
+| ------------------------------------------------------------------------------
+
+: .opd  ( -- )
+   low4bits  case
+      0 of  grp2op   ?.byte .ea  " 1" >arg  endof
+      1 of  grp2op          .ea  " 1" >arg  endof
+      2 of  grp2op   ?.byte .ea  cl  endof
+      3 of  grp2op          .ea  cl  endof
+      4 of  I: aam   op8@ drop  endof   | D4 is always followed by 0A (10)
+      5 of  I: aad   op8@ drop  endof   | D5 is always followed by 0A (10)
+      6 of  unimp    endof
+      7 of  I: xlatb endof
+          .fescape
+   endcase
+;
+
+mnemonics >loops
+   ," loopne"  ," loope"  ," loop"  ," jcxz"
+end-mnemonics
+
+: dx  ( -- )  " dx" >arg  ;
+
+: ub    ( -- )  op8@ (.) >arg ;
+: .ope  ( -- )
+   low4bits  dup  4 <if  >loops jb   ;then   ( low4bits )
+   case
+       4 of  IN   al/x  ub    endof
+       5 of  IN   al/x  ub    endof
+       6 of  OUT  ub    al/x  endof
+       7 of  OUT  ub    al/x  endof
+       8 of  CALL  jv         endof
+       9 of  JMP   jv         endof
+      $a of  JMP   ap         endof
+      $b of  JMP   jb         endof
+      $c of  IN   al/x  dx    endof
+      $d of  IN   al/x  dx    endof
+      $e of  OUT  dx    al/x  endof
+      $f of  OUT  dx    al/x  endof
+	    drop
+   endcase
+;
+
+mnemonics >fline-ops
+   ," lock"  ," ???"  ," repne"  ," repe"  ," hlt"   ," cmc"  ," ???"  ," ???"
+   ," clc"   ," stc"    ," cli"    ," sti"   ," cld"   ," std"
+end-mnemonics
+
+: acc-op  ( -- )    al/x  .ea   ;
+: .grp3  ( -- )
+   get-ea
+   midbits  case
+      0 of   TEST  ?.byte   .ea  ib/v  endof
+      1 of   TEST           .ea  ib/v  endof
+      2 of   I: not   ?.byte .ea  endof
+      3 of   I: neg   ?.byte .ea  endof
+      4 of   I: mul   ?.byte .ea  endof
+      5 of   I: imul  ?.byte .ea  endof
+      6 of   I: div   ?.byte .ea  endof
+      7 of   I: idiv  ?.byte .ea  endof
+	     drop
+   endcase
+;
+: .grp4  ( -- )
+   get-ea midbits  dup 1 >if
+      drop unimp
+   else
+      if  I: dec  else  I: inc  then
+      ?.byte .ea
+   then
+;
+: .ep  ( -- )  far  .ea  ;
+: .grp5  ( -- )
+   get-ea  midbits  case
+	0 of  I: inc    .ea   endof
+	1 of  I: dec    .ea   endof
+	2 of  CALL   .ea   endof
+	3 of  CALL   .ep   endof
+	4 of  JMP    .ea   instruction @  $e7 =  end-found !  endof
+	5 of  JMP    .ep   endof
+	6 of  PUSH  .ea   endof
+         unimp
+   endcase
+;
+: .opf  ( -- )
+   low4bits  lowbits  6 <if
+      >fline-ops
+   else
+      case
+         6 of  .grp3   endof
+         7 of  .grp3   endof
+        $e of  .grp4   endof
+        $f of  .grp5   endof
+	       drop
+      endcase
+   then
+;
+: .movi ( -- )
+   I: mov 3 1 ibits  to wbit  lowbits .greg ib/v
+;
+#16 case: op-class
+   .2op  .2op  .2op  .2op  .1op  .1op  .op6  .jcc
+   .op8  .op9  .opa  .movi .opc  .opd  .ope  .opf
+
+: (dis-body)  ( -- )  decode-op  op-class  ;
+' (dis-body) is dis-body
+
+: .bytes ( addr u --) 
+    bounds do  i c@ .2x space loop  ;
+
+: .instruction-bytes ( start --)
+   " | " type  pc @ over - .bytes  ;
+
+: .pc ( pc --)
+    postfix-mode tuck
+    if  " ( " type    then 
+    .x  
+    if  " ) " type  then 
+    3 spaces
+;
+    
+: dis1  ( -- )
+   clear-args
+   pc @ dup .pc 
+   dis-body 
+   .instruction
+   .instruction-bytes 
+   cr  ;
+
+
+0 value old-base    
+
+: disasm  ( addr c -- addr')
+   $10 base xchg to old-base
+   end-found off
+   over pc !
+  
+   repeat
+	dis1
+
+	2dup pc @ rot - swap u<
+	end-found @ not     and
+   while
+
+   2drop pc @
+   old-base base! 
+   0 to old-base 
+;
+
+pop~
+|||
+
+def: disasm  
+stack: addr c -- addr'
+ctx: ~disasm
+desc: |
+	Disassemble up to "c" lines from starting at "addr".  Leaves the ending
+	address on the stack.
+|
+
+0 [IF]
+LICENSE_BEGIN
+Copyright (c) 2006 FirmWorks
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+LICENSE_END
+[THEN]

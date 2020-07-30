@@ -1,0 +1,211 @@
+| testing helper library
+| vim: ft=reva :
+
+| : TESTING ;
+push~
+context: ~test
+~test
+0 value verbose
+variable silent
+variable number
+variable failures
+variable NUMBER-OF-TESTS
+variable tests-to-run
+variable current-test
+
+:: type_ ." is unknown!" 0 ; is ~sys.word?
+: mute silent on ;
+: talk silent off ;
+:: silent @ if drop ;then chain emit ; is emit
+:: silent @ if 2drop ;then chain type ; is type
+
+: test>desc ( -- a n )
+	current-test @ 
+	cell+ count ;
+: test>expected ( -- m )
+	test>desc + 1+ aligned @ ;
+: test>xt ( -- xt )
+	test>desc + 1+ aligned cell+ ;
+
+: .test# ." test #" number ? '( emit test>desc type ') emit ;
+| Bail-out:
+:: talk ." Exception: " .x ." executing " .test#
+	number @ test>desc type cr
+	bye ; is exception
+
+
+| update the test suite
+: suite-update ( a -- )
+	tests-to-run -link
+	NUMBER-OF-TESTS ++ ;
+
+| create test header with `addr u` as a description
+: (test)  ( expected addr u -- )
+	verbose  if  2dup type cr   then
+
+	align here suite-update 
+	asciiz,		| compile the comment just before the test code
+	align
+	,			| expected result
+	| create a headless lump of code:	
+	0L (header) ;
+
+: blab ( a n -- )
+	talk
+	type cr
+	mute ;
+
+| Every 'test' is declared using this word, and will automatically get run
+| It should return "true" if it succeeded, "false" if it failed.
+| The context it runs in is the default "reva" one
+: test: ( <description> ... -- true|false )
+	true
+: test2: ( n <description> ... )
+	10 parse 
+	(test)
+	| start compiling
+	p: ] ;
+
+: dotests ( -- true )
+	current-test !
+	number ++
+
+	push~
+		reva >r reset r>
+		verbose if
+			test>desc type cr
+		then
+		mute test>xt catch talk ?dup if 
+			." Caught thrown exception: " . 
+			." in " .test# cr
+		then
+		test>expected 
+		2dup <>if failures ++ 
+			." FAIL: " test>desc type cr
+			." EXPECTED: " . ." received " . cr
+		else
+			2drop
+		then
+	pop~
+
+	true
+	;	
+
+
+to~ ~ test:
+to~ ~ test2:
+to~ ~ blab
+~
+needs timer
+
+create estr 256 allot
+: start-time 7 >timer ;
+: elapsed 7 timer> >r
+	~test.number @  ~test.test>desc
+	estr place
+	" : " estr +place
+	r> (.timer) estr +place
+	"  ms" estr +place
+	estr count
+	;
+: test
+	~test
+	NUMBER-OF-TESTS @ 0if ." No tests have been created." cr ;then
+
+	number off
+	." Beginning test suite" cr
+	{ ['] dotests tests-to-run iterate } timer-xt 
+	." Finished test suite in " .timer cr
+	." Executed " number @ (.) type '/ emit NUMBER-OF-TESTS ? ." tests" 
+	failures @ if ." , with " failures ? ." failures" then 
+	cr cr
+
+	| bye
+	;
+
+pop~
+
+
+|||
+def: test2:
+stack: m <name>...; -- flag
+ctx: ~
+ver: 2011.2
+desc: *
+	Same as "test:", but takes a number on the stack which is the expected
+	test result.
+*
+
+def: test:
+stack: <name>...; -- flag
+ctx: ~
+desc: *
+	This word introduces a unit-test.  The rest of the line on which 'test:'
+	appears is the name of the test, which will be displayed if there is an
+	error.  If tests are defined inside a library or other file, then they
+	should be enclosed in a "IFTEST" block:
+
+	Example:
+		
+		[IFTEST]
+		~test
+		test: unit test #1
+			dup / 1 = ;
+
+		...
+
+		test
+		[THEN]
+		
+	The test is an anonymous word, and is terminated with ";".  It should return
+	true or false (true means success). 
+*
+
+def: test
+stack: --
+ctx: ~
+desc: *
+	This runs all tests which have been defined, and displays the results
+	(including timing and totals).
+*
+
+def: blab
+stack: a n --
+ctx: ~
+desc: *
+	Since normal I/O is superceded for the duration of tests, printing notices
+	etc. is done with this word.  It's a version of 'type' which works inside a
+	test.
+*
+def: start-time
+stack: --
+ctx: ~
+desc: *
+	Place this in your test to start an elapsed-timer for this test.  Use
+	with 'elapsed'.
+*
+def: verbose
+stack: --
+ctx: ~test
+desc: *
+	Set this to 'true' in order to make the test suite report the name of each
+	test as it is performed.
+*
+def: elapsed
+stack: -- a n
+ctx: ~
+desc: *
+	Used in conjunction with 'start-time'.  Produces a string showing the
+	elapsed milliseconds since 'start-time'.
+
+	Example:
+
+		test: very important
+			start-time
+			...
+			elapsed blab ;
+			
+	This will print "very important: nnn ms"
+*
+
+related: test test: blab [IFTEST] start-time elapsed verbose

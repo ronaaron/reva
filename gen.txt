@@ -1,0 +1,3754 @@
+/home/ron/proj/reva/src/help.txt
+lib/alg/dictionary
+lib/alg/stack
+lib/alg/list
+lib/alg/bubblesort
+lib/alg/common
+lib/alg/enum
+lib/alg/quicksort
+lib/alg/insertsort
+lib/alg/hsort
+lib/alg/htable
+lib/alg/sort-common
+lib/alg/structs
+lib/alg/array
+lib/ui/gl
+lib/ui/guiconsole
+lib/ui/gui-iup-img
+lib/ui/gtk
+lib/ui/gui
+lib/ui/gui-db
+lib/ui/glut
+lib/ui/gtk2
+lib/ui/iup-common
+lib/ui/cd
+lib/ui/glu
+lib/ui/iup
+lib/ui/sdl
+lib/ui/im
+lib/db/sqlite
+lib/db/report
+lib/db/common
+lib/db/mysql
+lib/net/ftp
+lib/net/xml
+lib/net/mime
+lib/net/http
+lib/net/xmlrpc
+lib/net/sockets
+lib/net/curl
+lib/net/json
+lib/net/cgi
+lib/os/dir
+lib/os/fs
+lib/os/exception
+lib/os/process
+lib/os/shell
+lib/os/clipboard
+lib/os/threads
+lib/os/fakeconsole
+lib/os/rapi
+lib/os/registry
+lib/os/console
+lib/os/tempfile
+lib/debugger
+lib/ansi
+lib/helper
+lib/asm/x86-prot
+lib/asm/x86-fpu
+lib/asm/x86
+lib/asm/x86-mmx
+lib/asm/common
+lib/asm/format/pe
+lib/asm/format/mach
+lib/asm/format/elf
+lib/util/doers
+lib/util/scase
+lib/util/portio
+lib/util/misc
+lib/util/auxstack
+lib/util/zlib
+lib/util/eachline
+lib/util/contexts
+lib/util/units
+lib/util/disasm
+lib/util/tasks
+lib/util/locals
+lib/util/patchmgr
+lib/util/classes
+lib/revagui/button
+lib/revagui/textdisplay
+lib/revagui/common
+lib/revagui/window
+lib/revagui/enumerations
+lib/revagui/box
+lib/revagui/utf8
+lib/revagui/textbuffer
+lib/random/simple
+lib/random/common
+lib/random/gm
+lib/timer
+lib/choices
+lib/date/parse
+lib/date/sedra
+lib/date/julian
+lib/date/sunrise
+lib/date/hebrew
+lib/date/iso
+lib/date/islam
+lib/date/holidays
+lib/date/church
+lib/date/calendar
+lib/string/justify
+lib/string/base64
+lib/string/soundex
+lib/string/dynamic
+lib/string/redirect
+lib/string/misc
+lib/string/gettext
+lib/string/iconv
+lib/string/trim
+lib/string/regex
+lib/string/uuid
+lib/string/xmlparse
+lib/app/gui
+lib/app/console
+lib/app/base
+lib/crypt/rc4
+lib/crypt/gpg
+lib/crypt/sha1
+lib/crypt/md5
+lib/fasm
+lib/math/big
+lib/math/floats
+lib/math/doubles
+lib/math/mod
+lib/testing
+lib/callbacks
+lib/data/parray
+lib/data/base
+lib/data/hash
+lib/data/array
+lib/print/pdf
+lib/print/base
+
+en
+::
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- xt
+desc: 	Create a new word without a dictionary entry. "xt" is the pointer
+	to the compiled code for the word.  This is mainly useful for
+	providing an anonymous function to use as an implmentation of a
+	defer-ed word.
+	
+_1-
+lib: src/reva.f
+ctx: ~strings
+stack: a b --  a-1 b
+ver: 6.1.9
+desc: 	Decrement the second stack item.  Like "1-" but for the item
+	under TOS.  Much more efficient than "swap 1- swap"
+
+fill
+lib: REMOVED
+ctx: ~strings
+stack: a c b --
+desc: 	Fill the memory at "a" with "c" copies of byte "b" 
+	
+conditionals
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: 	These are the conditional statements Reva provides:
+
+		if <>if 0if <if >if =if else then
+	
+title
+lib: lib/os/tempfile
+ctx: ~util
+stack: a u --
+desc: 	Set the title of the console window, for example,
+            ok> " My Title" title
+
+    Currently Windows only.
+
+title
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle a n -- handle
+desc: Use title to set the title string of a dialog. So handle should be a dialog widget.
+
+sort
+lib: lib/alg/enum
+ctx: ~ui
+stack: buffer size --
+desc:     Deferred sort algorithm for use by the data structure libraries.
+    'qsort' is default behaviour.
+
+onstartup
+lib: REMOVED
+ctx: ~io
+stack: xt --
+desc: 	Add the xt to the 'startup handlers list'.  This xt will be
+	executed when "cold" is called, just before "appstart" is called.
+
+	It is important that the stack diagram of the xt is ( -- )
+	
+cells
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- n
+desc: 	Return number of bytes required by "n" cells
+regex_find!
+lib: lib/string/uuid
+ctx: ~os
+stack: a1 n1 a2 n2 -- 0 | a n #matched
+desc: 	Easy wrapper for regex search.  Find (a2,n2) in (a1,n1), returning either 0
+	for no matches, or the number of matches, followed by the first match.
+
+'
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <name> -- xt
+desc: 	Look up the word "<name>" in the dictionary.  Returns the xt of
+	the word in question, or 0 if "<name>" doesn't exist.
+	
+sql_exec
+lib: lib/db/mysql
+ctx: ~report
+stack: handle a n --
+desc: 	Execute the SQL (a,n) on the database handle.
+
+array
+lib: lib/ui/gl
+ctx: ~ui
+stack: size <name> --
+desc:     Create a linear array of fixed size, allocated to OS memory.
+    For example:
+
+       ok> needs alg/array
+       ok> ~struct ~myapp
+       ok> 33 array myarray
+
+    For convenience, declaring
+
+       ok> myarray
+
+    sets it as the active data structure, so words like 'size' and
+    'prt' automatically know to operate on it.
+
+of
+lib: src/reva.f
+ctx: ~strings
+stack: --
+ver: 6.0.4
+desc: 	Equivalent of "over =if drop"
+	
+of
+lib: src/reva.f
+ctx: ~strings
+stack: n --
+ver: 6.0.11
+desc: 	Begins a "case selection".  If the case selector matches 'n',
+	then execution continues after the "of".  Otherwise it
+	continues after the matching "endof".  Essentially the same
+	as:
+
+		n over =if drop ... endif
+
+f?
+lib: lib/math/doubles
+ctx: ~test
+stack: a --
+desc: 	Same as "f@ f.", like "?"
+
+fldcw
+lib: lib/math/doubles
+ctx: ~test
+stack: n --
+desc: 	Loads the FPU control word.  See the x87 documents from Intel or AMD for
+	details.
+
+attr?:
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle a n  -- handle a n
+ver: 9.0.11
+desc: Returns in (a,n) the value of the attribute (a,n) in the widget specified by handle.
+See "attr?:"
+
+attr?:
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle <name> -- handle a n
+desc: Returns in (a,n) the value of the attribute <name> in the widget specified by handle.
+For many specific widgets the gui library provides specific words to access them more easily.
+
+npek
+lib: lib/alg/list
+ctx: ~ui
+stack: n -- data
+desc:     Peek at the data element 'n' deep in the active stack.
+
+    Sub-word: (npek)
+
+.rs
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Displays (up to) top ten return-stack items.
+	
+nfnvhash2
+lib: lib/alg/sort-common
+ctx: ~ui
+stack: int -- hash
+desc:     Hash an integer through a modified FNV algorithm.
+
+creat
+lib: src/revacore.asm
+ctx: ~help
+stack: a n -- fileid
+desc: 	Create a new file for reading and writing.
+	
+key?
+lib: src/core{lin,win}.asm
+ctx: ~help
+stack: -- flag
+desc: 	Returns 'true' if a character is waiting to be read from the
+	input.
+	
+=
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: m n -- flag
+desc: 	Returns 'true' or 'false' depending on the test "m=n" using
+	signed-math.
+	
+peek-n
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n stack -- m
+ver: 6.0.9
+desc: 	Puts the "n"th item in stack on TOS
+
+d.
+lib: lib/math/mod
+ctx: ~struct
+stack: d --
+desc: 	Like ".".  Take a double, and print it followed by a space.
+
+default
+lib: lib/date/parse
+ctx: ~strings
+stack: xt --
+desc: 	MOVED TO choices in 6.0.11
+	Makes 'xt' the default "choice" to be executed when nothing else
+	matches.  The default "default" is to do nothing.
+
+longs[]:
+lib: lib/alg/array
+ctx: ~strings
+stack: offset n <name> -- offset'
+desc: 	Declares a field "n" longs (4n bytes) large
+
+s0
+lib: REMOVED
+ctx: ~io
+stack: -- a
+desc: 	Variable holding value of start of stack space
+	
+zcount
+lib: REMOVED
+ctx: ~os
+stack: z -- a n
+desc: 	Convert NUL-terminated string to address-count "Forth" format.
+	
+fC2
+lib: lib/math/doubles
+ctx: ~test
+stack: -- n
+ver: 7.0.11
+desc: 	Retrieves the FPU status word C2 bit as a flag
+
+Tammuz
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 4
+desc: 	Symbolic name for the Hebrew month "Tammuz"
+
+helpdir
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- a n
+desc: 	Return the full path to the help database, including the final
+	path-separator character
+	
+strcatf
+lib: lib/string/gettext
+ctx: ~os
+stack: a1 n1 a2 n2 -- a3 n3
+ver: 6.1
+desc: 	Append (a2,n2) to (a1,n1) resulting in the string (a3,n3).  The string
+	(a3,n3) is always in the "scratch" buffer, and so using this more than once
+	will overwrite previous strings (or anything else in "scratch").  It is,
+	however, much faster than "strcat".  On the other hand, one may not use
+	strings larger than 4091 bytes total.
+
+fatanh
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a --  atanh(a) ; ln((1+a)/(1-a))/2
+ver: 7.0.5
+desc: 	Replaces FTOS with hyberbolic arctangent . 
+
+regex_find
+lib: lib/string/uuid
+ctx: ~os
+stack: a1 n1 regex -- 0 | a n #matched
+desc: 	Easy wrapper for regex search.  Find regex in (a1,n1), returning either 0
+	for no matches, or the number of matches, followed by the first match.
+
+include
+lib: REMOVED
+ctx: ~reva
+stack: <name> --
+desc: 	Read in the file "<name>" and evaluate it. Silent on failure, but
+	'ioerr' will be non-zero.
+
+	NOTE: the stack pointer is restored to whatever it was before
+	the "include".  That is, if the file to be included push
+	values on the stack, those values will NOT be present after
+	the "include".  This is intentional.
+	
+apply-patch-file
+lib: lib/util/classes
+ctx: ~revagui
+stack: db a n -- f
+ver: 2011.1
+desc: 	Applies the patch which is in the file "(a,n)".  First checks to see if the
+	patch has been applied, by querying the open database "db".  
+
+	A "patch file" must be in the format created by "create-patch-file".  It is
+	compressed and encrypted, and has checksum information to make it slightly
+	difficult to hack, as well as to make it somewhat more secure.
+
+	NOTE: if you need real security for your patches, you *must* use something
+	like GPG signatures and verify the patch separately.  This library is not
+	that paranoid, but should be good enough for common purposes.
+
+	A patch will not be applied if it has already been applied, but that is not
+	an error.  Return results are "true" if there was no problem, or "false" if
+	the patch failed verification.
+
+lst
+lib: lib/alg/bubblesort
+ctx: ~ui
+stack: -- a
+desc:     Variable holding the address of the active list.
+
+fixed>iso
+lib: lib/date/islam
+ctx: ~sunrise
+stack: f -- week day year
+desc: 	Converts fixed date to ISO W/D/YYYY 
+
+dim
+lib: lib/os/tempfile
+ctx: ~util
+stack: --
+desc: 	Dim the background colour (if bright).
+
+xml-sethandlers
+lib: lib/app/gui
+ctx: ~sockets
+stack: xt-start xt-end xt-content h --
+desc: 	Sets the XTs to call back when an XML entity starts, ends and has content.
+
+make
+lib: lib/util/scase
+ctx: ~strings
+stack: <name>
+ver: 6.0.4
+desc: 	NOTE: In 9.0.8 was moved to util/doers
+
+	Sets the current behavior of a "doer" to the code following it.  Each time
+	"make" is invoked, it saves the previous value of the "doer" so that "undo"
+	can restore it. 
+
+	Example:
+
+		doer joe
+		make joe ." Hi there!" cr ;
+		joe | prints "Hi there!"
+		make joe ." no way" cr;
+		joe | prints "no way"
+		undo joe
+		joe | prints "Hi there!"
+	
+handle-pending-events
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: --
+desc: Used internally to manage callbacks that are executed within the normal forth environment.
+
+Sep
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 9
+desc: 	Symbolic name for September
+
+.needs
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 6.0.7
+desc: 	Shows list of files which have been loaded by "needs"
+	
+?do
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: max start --
+desc: 	ANS-compatible '?do'. Iterates from 'start' to 'max'-1.  If 'max'
+	and 'start' are equal, will not do any iterations.
+	
+freethread
+lib: lib/os/fakeconsole
+ctx: ~util
+stack: handle --
+ver: 7.0.6
+desc: 	Frees the memory associated with the thread.  Do not do this unless the
+	thread has terminated!
+
+connect
+lib: lib/net/curl
+ctx: ~curl
+stack: sock name len -- result
+desc: 	Connects the socket to the remote address. 
+	Returns 0 for success, or something else for error.
+
+frame[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: a n -- a n handle handle
+desc: Creates a group box with the label (a,n) around the widgets that it contains. Close the frame group definition with ]fr.
+
+list
+lib: lib/alg/bubblesort
+ctx: ~ui
+stack: <name> --
+desc:     Create the header for an allocated linked list, for example:
+
+       ok> needs alg/list
+       ok> ~struct ~myapp
+       ok> list mylist
+
+    For convenience, declaring
+
+       ok> mylist
+
+    sets it as the active data structure, so words like 'ins' and 'del'
+    automatically know to operate on it. If this is not desired, use
+    the associated sub-words, eg. '(ins)', which then expect a list or
+    node pointer on the stack. Any sub-words in alg/stack may also be
+    used.
+
+RH
+lib: lib/db/common
+ctx: ~xml
+stack: <line> --
+ver: 2011.1
+desc: 	Define a report-header line.
+
+rmvkeys
+lib: lib/alg/sort-common
+ctx: ~ui
+stack: --
+desc:     In the active hash table, drop and free all keys in all buckets
+    from allocated memory.
+
+rows
+lib: lib/ui/gl
+ctx: ~ui
+stack: -- cols
+desc:     Return the number of columns in the active (2- or 3-D) array.
+
+big-
+lib: lib/math/floats
+ctx: ~floats
+stack: c a b --
+ver: 6.1.6
+desc: 	Sets the big number "c" to the difference of the big numbers "a-b"
+
+strlwr
+lib: lib/string/gettext
+ctx: ~os
+stack: a n --  a n
+desc: 	Convert string to lowercase, inplace
+
+bright
+lib: lib/os/tempfile
+ctx: ~util
+stack: --
+desc: 	Brighten the background colour.
+
+string/regex
+lib: lib/string/uuid
+ctx: ~os
+desc: 	Wrapper around the PCRE library.  Linux users need to have PCRE
+	installed (most will already have it).  Windows users get
+	'pcre3.dll' in the 'bin' directory, which needs to be distributed
+	with any application which uses PCRE.
+
+	To appreciate the complexities of the regular-expressions
+	permitted, please look at the PCRE documentation on-line at:
+
+		http://www.pcre.org/
+	
+4cell+
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n -- n
+desc: 	Advance "n" by four cells (16 bytes) 
+	
+*/_
+lib: lib/testing
+ctx: ~strings
+stack: amount multiplier divisor --  quot
+desc: 	Floored version of "*/"
+
+page#
+lib: lib/db/common
+ctx: ~report-define
+stack: -- a n
+ver: 2011.1
+desc: 	Current page number, as a string
+
+stack:
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n <name> --
+ver: 6.0.9
+desc: 	Declares a new stack named <name>, of size n
+
+.fs
+lib: lib/math/doubles
+ctx: ~test
+stack: --
+ver: 9.0.6
+desc: 	Like ".s" but for the FP stack
+
+sql_fetch#
+lib: lib/db/mysql
+ctx: ~report
+stack: handle a n -- m
+desc: 	Given a SQL string (a,n) and a database handle, returns the result of the
+	query as an integer.  This will only be useful for SQL like:
+
+		select sum(amount) from account 
+
+gui-continue
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- -4
+desc: A return code used within callbacks to flag that the event shall be propagated to the next event handler.
+
+param$
+lib: lib/db/common
+ctx: ~report-define
+stack: n -- a n
+ver: 2011.1
+desc: 	Returns the n'th string parameter, which must have been set before
+	running the report, by "set-report-param$".  
+
+	Up to 5 string parameters may be set per report-run.
+
+find-word
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: a n context -- 0 |  dict -1
+ver: 6.0.9
+desc: 	Looks for the word (a,n) in the context given.  Like find-dict
+
+mark
+lib: lib/util/auxstack
+ctx: ~reva
+stack: <name> --
+desc: 	Creates a word which when executed, will revert the system to the
+	state it had before that word was created.  This is very useful
+	when you want to "play around" with things and remove their
+	side-effects.
+
+	Note: the word will affect only the context in which it was run.
+	
+0if
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n --
+desc: 	Execute condition if 'n' is zero
+	
+ERROR
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a1 n1 a2 n2 --
+ver: 9.0.7
+desc: 	Prints on a new line "ERROR: " followed by string (a2,n2), a
+	space, and string (a1,n1) then another new-line.
+	
+	Used to acheive some uniformity in Reva error messages.
+
+get-mime
+lib: lib/net/http
+ctx: ~strings
+stack: a n -- a' n'
+desc: 	Given a filename extension (a,n), returns a "mime-type".
+
+/_mod
+lib: lib/testing
+ctx: ~strings
+stack: dividend divisor --  rem quot
+desc: 	Floored version of "/mod"
+
+trim
+lib: lib/string/regex
+ctx: ~os
+stack: a n -- a' n'
+desc: 	trim from both sides
+
+f*10
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a -- a*10.0
+desc: 	Multiply FTOS by ten
+
+parsews
+lib: REMOVED
+ctx: ~strings
+stack: -- a n
+desc: 	Same as parse, but eliminates any "whitespace" from before or
+	after the word. 
+	
+(if
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: --
+desc: 	You don't want to use this word; it's internal to the
+	various conditionals.
+	
+emit
+lib: src/revacore.asm
+ctx: ~help
+stack: c --
+desc: 	Print character corresponding to the ASCII value 'c'
+	
+SIGINT
+lib: lib/os/process
+ctx: ~process
+stack: -- n
+ver: 6.1.6
+desc: 	Value of the "INTerruption" signal
+
+stdout
+lib: REMOVED
+ctx: ~strings
+stack: -- n
+desc: 	Return handle of standard-output
+	
+showhelp
+lib: src/core{lin,win}.asm
+ctx: ~doubles
+stack: xt --
+ver: 6.0.4
+desc: 	Called to display help on the "xt".
+	
+init-report-from-file
+lib: lib/db/common
+ctx: ~report
+stack: db a n -- m
+ver: 2011.1
+desc: 	Add a report, defined in the file name given (a,n), to the database
+	"db", and return the id number of the report (or -1 on failure).
+
+f>64
+lib: lib/math/doubles
+ctx: ~test
+stack: -- x  | float: x --
+desc: 	Removes FTOS as 64-bit IEEE FP value and puts into TOS
+
+xml-reset
+lib: lib/app/gui
+ctx: ~sockets
+stack: h -- f
+desc: 	Resets the state held by the parser handle "h", so it can handle a new XML
+	stream.
+
+christmas
+lib: lib/date/church
+ctx: ~sunrise
+stack: year -- fixed
+desc: 	 Returns fixed date for Christmas Day on the given year.
+
+dawn-dusk
+lib: lib/date/hebrew
+ctx: ~sunrise
+stack: mm dd yyyy -- dusk dawn
+ver: 9.0.6
+desc: 	For the location previously set, calculates the approximate time of
+	dawn and dusk, as whole minutes from local midnight.  For the purposes of
+	this algorithm, both are defined as the sun being 7 degrees below the
+	horizon, which is about when the stars begin to be visible.
+	
+	See 'rise-set' for more details.
+
+SIGABRT
+lib: lib/os/process
+ctx: ~process
+stack: -- n
+ver: 6.1.6
+desc: 	Value of the "ABoRT" signal
+
+hinst
+lib: REMOVED
+ctx: ~util
+stack: -- n
+desc: 	Return process instance handle 
+2,
+lib: REMOVED
+ctx: ~strings
+stack: n --
+desc: 	Put two bytes at "here", and increment here by
+	the number of bytes put there. 
+dstr
+lib: lib/string/redirect
+ctx: ~os
+stack: n -- a
+ver: 7.0.6
+desc: 	Allocate a new dynamic string with space for 'n' characters.  The string
+	will grow as needed when "dplace" and "+dplace" are used to add content to
+	it.  Remember to call "dfree" on the string to release the memory allocated.
+
+(argv)
+lib: REMOVED
+ctx: ~reva
+stack: --
+desc: 	Pointer to the raw 'argv' data.  You probably want 'argv' instead.
+	
+"
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <str>" -- a n
+desc: 	Create a string by parsing input up to the next double-quote.  If
+	compiling, the string data are put in the heap and the runtime
+	code will push the address and length of the string on the stack.
+	If interpreting, the address and length will be put on the stack,
+	and the string will be allocated from a buffer for transient
+	strings.  In either case, one may put a double quote inside a
+	string by prefacing it with the '\' (backslash) character:
+	"\"Hi!\", said Mary"
+
+	NOTE: strings created interactively have a 255 byte limit.
+	Compiled strings, do not have that limitation.
+	
+qsort
+lib: lib/alg/insertsort
+ctx: ~strings
+stack: buf size --
+desc: 	Sort the buffer "buf" of "size" cells, using the QuickSort algorithm.
+
+d2*
+lib: lib/math/mod
+ctx: ~struct
+stack: d1 -- d2
+ver: 6.1.6
+desc: 	Multiply the double "d1" by 2, giving "d2"
+
+libiconv
+lib: lib/string/trim
+ctx: ~os
+stack: -- lib
+desc: 	Library handle to the "libiconv" library.
+
+WIN
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- f
+ver: 9.0.2
+desc: 	Returns "true" if running under Windows, "false" otherwise.
+
+errno
+lib: src/core{lin,win}.asm
+ctx: ~util
+stack: --
+ver: 7.0.6
+desc: 	Returns the last os-specific error code.  On Windows this maps
+	to "GetLastError", on Linux it's 'errno'. 
+        
+'inline
+lib: REMOVED
+ctx: ~strings
+stack: xt --
+desc: 	Implementation of the "inline" class.
+'value
+lib: REMOVED
+ctx: ~strings
+stack: xt --
+ver: 6.0.8
+desc: 	Class for "value"s
+
+send
+lib: lib/net/curl
+ctx: ~curl
+stack: sock buf len flags -- sent
+desc: 	Low level send function.  Returns the number of characters actually sent,
+	which may be fewer than 'len'.
+
+rel>
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: rel -- xt
+ver: 6.0.4
+desc: 	Converts a relative offset to an XT
+	
+d+
+lib: lib/math/mod
+ctx: ~struct
+stack: d1 d2 -- d3
+desc: 	Adds the doubles "d1" and "d2" to create "d3".
+
+timer>
+lib: lib/choices
+ctx: ~reva
+stack: n -- m
+ver: 9.0.11
+desc: 	Gets the current elapsed number of milliseconds since timer 'n' was started.  
+
+d+
+lib: lib/alg/dictionary
+ctx: ~struct
+stack: d1 d2 -- d3
+ver: 6.0.4
+desc: 	MOVED TO math/doubles in 6.0.11
+	Adds "d1" and "d2" to make "d3"
+	
+_dup
+lib: src/reva.f
+ctx: ~strings
+stack: a b -- a a b
+ver: 9.0.10
+desc: 	Duplicate cells just under TOS, same as "over swap" but much
+	faster
+	
+weekday-after
+lib: lib/string/justify
+ctx: ~sunrise
+stack: date k -- date'
+desc: 	Given a fixed date and a weekday, return a fixed date which is that weekday,
+	and as near to the fixed date passed in as possible, within a week after.
+
+noop
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Does nothing. This is the default value for 'defer'ed words.  
+hebrew-month-name
+lib: lib/date/iso
+ctx: ~sunrise
+stack: nr -- a n
+desc: 	 Returns the Hebrew month name corresponding to the number passed in.
+
+>in
+lib: REMOVED
+ctx: ~io
+stack: -- tin
+desc: 	Variable holding pointer to current location in tib. 
+	
+big:
+lib: lib/math/floats
+ctx: ~floats
+stack: <name> --
+ver: 6.1.6
+desc: 	Create a "big" math object, initialized to zero.
+
+case
+lib: src/reva.f
+ctx: ~strings
+stack: --
+ver: 6.0.11
+desc: 	Begins a "case ... endcase" construct.  Used instead of
+	multiple "if ... else ?.. then".
+
+	Example:
+
+		case
+			1 of ... endof
+			4 of ... endof
+			| default case is here
+		endcase
+
+	If none of the cases is handled, it falls through to the
+	"default case" section.  The case selector will be in TOS
+
+dict?
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: <name> --
+ver: 6.1
+desc: 	Puts dict of "<name>" in TOS, or throws -1 and prints "... is
+	not a word" if the word does not exist.
+	
+save-gui
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: <file> --
+desc: Creates an executable (turnkey) GUI application and exits the current Reva session. On UNIX you could also use save directly.
+On Windows this word does the same as save does, but it also patches the created PE file to be a real GUI only application. So Windows doesn't create a DOS window when you start your GUI application.
+
+stdin
+lib: REMOVED
+ctx: ~strings
+stack: -- n
+desc: 	Return handle of standard-input
+	
+/string
+lib: src/core{lin,win}.asm
+ctx: ~os
+stack: a n m -- a1 n1
+ver: 6.0.5
+desc: 	Advance the string by "m" characters.  Basically, cuts off the
+	first "m" characters.
+	
+@
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a -- n
+desc: 	Returns the cell pointed to by the address in a 
+	Be careful not to pass an invalid address to it!
+
+2over
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b c d -- a b c d a b
+desc: 	Copy 3rd and 4th stack items over TOS
+	
+libdir
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- a n
+desc: 	Full path to "lib" directory, which is where the standard Reva
+	libraries are stored.  The word "needs" uses this to find
+	libraries.
+	
+[ELSE]
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Used with [IF] and [THEN] for conditional compilation 
+	
+calendar
+lib: lib/string/justify
+ctx: ~sunrise
+stack: f --
+desc: 	Prints a calendar for the month containing day "f"
+
+appstart
+lib: REMOVED
+ctx: ~io
+stack: --
+desc: 	Similar to "main" in C,  this is the starting point for the
+	application itself. 
+	
+>r
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- r:n
+desc: 	Puts top stack item on return stack 
+	
+move
+lib: REMOVED
+ctx: ~strings
+stack: src dst n --
+desc: 	Moves "n" bytes from "src" to "dst".
+	
+s++
+lib: lib/string/gettext
+ctx: ~os
+stack: a n -- a' n'
+desc: 	Increment the string by one character
+
+>defer
+lib: lib/util/scase
+ctx: ~strings
+stack: xt <name>
+ver: 6.0.4
+desc: 	Similar to "is", but does not affect default behavior.  Changes
+	current behavior of the deferred word <name> to the "xt". If you
+	want to change the default behavior as well, use "is" instead.
+	
+3drop
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: a b c --
+ver: 6.0.6
+desc: 	Drop the three top items from the stack.
+	
+asciizl,
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: a n --
+desc: 	Same as 'asciiz,' but puts a long-counted-string at 'here'.
+
+type
+lib: src/revacore.asm
+ctx: ~help
+stack: a n --
+desc: 	Print a string (by default to the console).
+	NOTE: This word will not type a big string (32K or so) on Windows.
+	
+else
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Begin alternate clause of conditional, execute if conditional
+	false.
+	
+]r
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: parent handle handle -- parent
+desc: Closes the definition of a radio box and adds it to the parent widget.
+
+param#
+lib: lib/db/common
+ctx: ~report-define
+stack: n -- m
+ver: 2011.1
+desc: 	Returns the n'th integer parameter, which must have been set before
+	running the report, by "set-report-param#".  
+
+	Up to 5 integer parameters may be set per report-run.
+
+ft
+lib: lib/util/disasm
+ctx: ~strings
+stack: n --
+desc: 	Feet
+
+itr
+lib: lib/alg/enum
+ctx: ~ui
+stack: xt --
+desc:     Execute 'xt' for each element in the active data structure. 'xt' must return
+    'false' to stop iteration, or 'true' to continue.
+
+    Sub-word: iterate
+
+key
+lib: src/revacore.asm
+ctx: ~help
+stack: -- c
+desc: 	Returns the ASCII value of a keypress, but only returns when CR
+	has been pressed
+	
+or
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- n
+desc: 	OR top two items, like C bitwise operator: a | b
+	
+caret-y?
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle n
+desc: Returns the current y position of the caret in a text or editbox widget.
+
+mmddyyyy>ddd
+lib: lib/string/justify
+ctx: ~sunrise
+stack: mm dd yyyy -- ddd
+desc: 	Converts Gregorian MM/DD/YYYY to a Julian day number
+
+back
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n --
+desc: 	Generates code to jump back to the address specified on TOS
+	
+ioports
+lib: lib/util/misc
+ctx: ~
+stack: ver: 6.1.4
+desc: 	Accessing the CPU I/O ports on Windows and Linux is usually only permitted
+	to privileged programs.  If you try to use the related words here without
+	having acquired permissions for your application, you will probably get a
+	crash with some sort of privileged instruction exception.
+
+	Windows users can take advantage of a program called "porttalk":
+
+		http://www.beyondlogic.org/porttalk/porttalk.htm
+
+	Linux users will want to look at the IO Port Programming HOWTO:
+
+		http://tldp.org/HOWTO/IO-Port-Programming.html
+
+inb
+lib: lib/util/misc
+ctx: ~strings
+stack: port -- value
+ver: 6.1.4
+desc: 	Read 8-bit "value" from CPU I/O port "port".
+
+doer
+lib: lib/util/scase
+ctx: ~strings
+stack: <name>
+ver: 9.0.8
+desc: 	Creates a "doer", which is similar to a "defer"ed word.  Actually, it is the
+	same except that it is set using "make", and can be restored to the previous
+	value using "undo"
+
+	The default behavior of a "doer" is to do nothing.  Ironic, that.
+
+2!
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: d 2var --
+desc: 	Stores a double (8 bytes) "d" to a memory address "2var".
+	
+help-total-lib
+lib: lib/alg/dictionary
+ctx: ~
+desc: words in the library
+
+dup
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a -- a a
+desc: 	Duplicate the top stack item 
+	
+add
+lib: lib/alg/list
+ctx: ~ui
+stack: n --
+desc:     Add 'n' to the top element of the active stack.
+
+    Sub-word: (add)
+
+3dup
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b c -- a b c a b c
+desc: 	Similar to 2dup.  This has been used often enough to justify
+	adding it to the core.
+	
+i
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- ix
+desc: 	Current index of innermost "do" loop.
+	
+close
+lib: src/revacore.asm
+ctx: ~help
+stack: fileid --
+desc: 	Close "fileid" previously opened with 'open/r' 'open/rw' or
+	'creat'.
+	
+unix>time&date
+lib: lib/string/justify
+ctx: ~sunrise
+stack: unixtime -- ss mm hh dd MM yyyy
+desc: 	Converts Unix timestamp (seconds since 0hrs 1/1/1970) to a "time&date" 
+
+gzread
+lib: lib/util/eachline
+ctx: ~strings
+stack: handle buf len -- read
+desc: 	Reads the given number of uncompressed bytes from the compressed file. If
+	the input file was not in gzip format, gzread copies the given number of
+	bytes into the buffer.
+
+	gzread returns the number of uncompressed bytes actually read (0 for end of
+	file, -1 for error). 
+
+blank
+lib: REMOVED
+ctx: ~strings
+stack: a n --
+ver: 2011.2
+desc: 	Fill the memory at "(a,n)" will spaces (ASCII 32)
+	
+cb:
+lib: lib/data/parray
+ctx: ~util
+stack: xt stacksize <name> --
+desc: 	REMOVED in 7.0.10
+	REPLACED by callback
+	
+FIRST
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 1
+desc: 	For use with "nth-weekday" as the "n" parameter.
+
+stack-empty?
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: stack -- flag
+ver: 6.0.9
+desc: 	Returns whether or not the stack has items on it.
+
+cell-@
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 7.x
+desc: 	Factorisation of the common "cell- @"
+
+curl_version
+lib: lib/net/json
+ctx: ~cgi
+stack: -- z
+ver: 2011.1
+desc: 	Return version of cURL library in use
+
+strsplitat
+lib: lib/string/gettext
+ctx: ~os
+stack: a n off len -- a1 n1 a2 n2
+ver: 7.0.2
+desc: 	Split the string at offset "off" for "len" characters.  
+	Example:
+		" abcdefg" 2 3 strsplitat
+	gives:
+		" ab" and " fg"
+
+	NOTE: This word does *no* checking of the arguments, so if you give it
+	garbage you will likely crash.  It is intended to be used by higher level
+	words, but is useful on its own.
+
+strupr
+lib: lib/string/gettext
+ctx: ~os
+stack: a n --  a n
+ver: 7.0.2
+desc: 	Convert string to uppercase, inplace
+
+inline{
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <bytes> <}> --
+ver: 6.0.6
+desc: 	Compiles "inline" the (hex) bytes following it.  This is good for
+	inline assembly code in a simple way:
+
+	Example:
+		: nop inline{ 90 } ;
+
+	If you want the numbers interpreted as other than 'hex', use the
+	numeric prefixes.
+
+	NOTE: This does *not* make the word an "inline" word!
+	
+if;
+lib: lib/util/auxstack
+ctx: ~strings
+stack: flag --
+desc:     If 'flag' is true, exit word, otherwise continue.
+
+2cell-
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n -- n-8
+ver: 6.0.7
+desc: 	Same as "cell- cell-", but more efficient.
+	
+tuck
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- b a b
+desc: 	Put a copy of top cell under second stack item 
+	
+m*
+lib: lib/math/mod
+ctx: ~struct
+stack: n1 n2 -- d
+desc: 	Multiplies two singles "n1" and "n2", leaving the double result "d"
+
+pentecost
+lib: lib/date/calendar
+ctx: ~sunrise
+stack: year -- fixed
+desc: 	 Fixed date of Pentecost in Gregorian year.
+
+2dup
+lib: REMOVED
+ctx: ~strings
+stack: a b -- a b a b
+desc: 	Duplicate top two cells 
+	
+dplace
+lib: lib/string/redirect
+ctx: ~os
+stack: a n a' --
+ver: 7.0.6
+desc: 	Same as 'place' but for dynamic strings
+
+fp-decimal-char
+lib: lib/math/doubles
+ctx: ~test
+stack: -- a
+desc: 	Character used to indicate the "decimal point".  That is, digits to the
+	right of this character represent the fractional portion of the number.
+	Currently only used for input.
+
+sql_prepare
+lib: lib/db/mysql
+ctx: ~report
+stack: db a n -- x
+ver: 9.0.11
+desc: 	Take the SQL string (a,n) and the open database connection "db", and compile
+	it for later use with sql_pexec.  
+
+	The value returned must be given to sql_finalize when it is no longer
+	needed.
+
+>base>
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: n -- m
+ver: 6.0.7
+desc: 	REMOVED in 9.0.10
+	Sets the value of "base" to "n" temporarily.  When the calling
+	word exits, the "base" will be restored to what it was before.
+	
+'constant
+lib: REMOVED
+ctx: ~strings
+stack: xt --
+ver: 6.0.7
+desc: 	Class of constants
+	
+lcount
+lib: src/core{lin,win}.asm
+ctx: ~os
+stack: lstr -- a n
+desc: 	Converts a long-counted-string (>255 chars) to an address-count
+	pair.
+	
+recvall
+lib: lib/net/curl
+ctx: ~curl
+stack: sock xt --
+ver: 7.0.9
+desc: 	Repeatedly does "recv" on "sock", calling "xt" for each chunk received.
+
+	The stack diagram of "xt" is ( a n -- )  so don't forget to consume the text
+	fed in!
+
+	NOTE: The maximum size of 'n' is 'recvallbufsize', which by default is 4096
+	but may be changed.  
+
+	NOTE: 'n' may be zero, so check for that case if necessary.
+
+loc;
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: --
+desc: 	REMOVED in 6.0.10
+	Ends a 'local definitions' list.
+	
+isa
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: class-xt a n -- xt | throw
+ver: 6.0.10
+desc: 	Verifies that the word (a,n) is of the class represented by
+	the class-xt passed in.   If it is, it returns the xt of that
+	word; otherwise, it throws an exception.
+
+disasm
+lib: lib/util/tasks
+ctx: ~patchmgr
+stack: addr c -- addr'
+desc: 	Disassemble up to "c" lines from starting at "addr".  Leaves the ending
+	address on the stack.
+
+disasm
+lib: lib/ansi
+ctx: ~strings
+stack: xt --
+desc: 	High-level disassembly word, which takes a supposed "xt" and disassembles
+	until the first 'return' or 'jump'
+
+xt>name
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: xt -- a n
+ver: 6.0.5
+desc: 	Returns the name of the xt.
+	
+-rot
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b c -- c a b
+desc: 	Rotate top three items counter-clockwise 
+	
+]a
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: --
+desc: Ends the definition of an inline ACTION callback started with action[.
+
+Adar
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 12
+desc: 	Symbolic name for the Hebrew month "Adar"
+
+getcwd
+lib: src/reva.f
+ctx: ~util
+stack: -- a n
+ver: 6.1.3
+desc: 	Retrieves the current working directory.
+	
+3,
+lib: REMOVED
+ctx: ~strings
+stack: n --
+desc: 	Put three bytes at "here", and increment here by
+	the number of bytes put there. 
+uuid$
+lib: lib/string/xmlparse
+ctx: ~strings
+stack: -- a n
+ver: 7.0.10
+desc: 	Generates a string representation of a "type 4" (random) UUID
+
+aux@
+lib: lib/util/zlib
+ctx: ~strings
+stack: -- n
+desc: 	Peek at TOS from the auxilliary stack
+
+Dec
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 12
+desc: 	Symbolic name for December
+
+Apr
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 4
+desc: 	Symbolic name for April
+
+del$
+lib: lib/alg/enum
+ctx: ~ui
+stack: a-str u --
+desc:     A 'del' for strings.
+
+    Sub-word: (del$)
+
+languages2
+lib: lib/alg/dictionary
+ctx: ~
+desc: 	To use one of these languages as your primary help language, please set the
+	environment variable 'REVALANG' to the language you wish to use.
+
+in2
+lib: lib/util/disasm
+ctx: ~strings
+stack: n --
+desc: 	Square inches
+
+vector
+lib: lib/alg/dictionary
+ctx: ~io
+stack: --
+ver: 6.0.4
+desc: 	REMOVED in 9.0.10
+	Sets up a noop jump which can be vectored elsewhere.
+	Example:
+	  
+	  : v vector ." hi  there" ;
+	  v
+	  ' words v
+	  v
+	
+srcstr
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: -- a n
+desc: 	Returns a string containing the remaining text to be processed by
+	the interpreter.  Mostly for use in 'scan-ahead' processing, for
+	example by "[IF]" etc.
+gl-swap-buffers
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+desc: 
+]w
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: parenthandle handle -- parenthandle
+desc: Closes a widget definition (of the handle widget) and adds the handle widget to the parenthandle widget.
+
+word?
+lib: REMOVED
+ctx: ~io
+stack: a n -- a n 0 | xt 1 | n 2 | n m 3 | 4
+desc: 	Last resort interpreter hook.  This gets called when the
+	interpreter cannot determine that a piece of text is a word or a
+	number.
+	
+(bye)
+lib: src/revacore.asm
+ctx: ~io
+stack: n --
+desc: 	Leave Reva with errorcode "n"
+	
+notail
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Same as "forth", but sets the class as "'notail".  This class
+	supresses the 'tail-recursion-optimizer', and is used when using
+	the word as the last word in a colon-def causes problems because
+	the return stack is not what was expected.  Some words like ">rr"
+	use this class.  All 'macro' class words also suppress the
+	tail-optimizer now.
+	
+choose
+lib: lib/random/gm
+ctx: ~strings
+stack: n -- 0..n-1
+desc: 	Select a number between zero and n-1 inclusive.
+
+julian>fixed
+lib: lib/date/sunrise
+ctx: ~sunrise
+stack: mm dd yyyy -- fixed
+desc: 	Convert the Julian year MM/DD/YYYY to a fixed date
+
+strcvt
+lib: lib/string/trim
+ctx: ~os
+stack: a n cvt -- a' n'
+ver: 6.0.9
+desc: 	Converts the string (a,n) using the conversion token "cvt" created via
+	"icon_open".  The string is NUL terminated both for single and double byte
+	strings, but the NUL terminator is not counted in the string length.
+	
+	The returned string is "allocate"d so you have to "free" it
+
+getpos
+lib: lib/os/tempfile
+ctx: ~util
+stack: -- x y
+desc: 	Return the cursor's current x,y coordinate.
+
+spaces
+lib: src/core{lin,win}.asm
+ctx: ~help
+stack: n --
+desc: 	Prints 'n' spaces 
+	
+autovar:
+lib: REMOVED
+ctx: ~strings
+stack: xt <name> --
+ver: 2011.1
+desc: 	Create a variable "<name>", which will check to see if it has been
+	initialized (a non-zero value).  If it has not, it calls the
+	"xt" and stores that value to be returned.
+
+reva
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 6.0.9
+desc: 	Resets the search-order, and puts the following contexts in
+	the search-order:
+
+		~reva ~os ~util ~io ~string ~
+
+	So after executing this word, the "common" Reva words will all
+	be available, and mostly Reva will behave as it did before
+	version 6.0.8.  
+
+	To set up your own ordering, simply use "reset~" followed by
+	whatever contexts you wish ("~" will be first in search-order
+	and the only thing in it, after "reset~").
+
+hsort
+lib: lib/alg/htable
+ctx: ~strings
+stack: buf size --
+desc: 	Sort the buffer "buf" of "size" cells, using the Heapsort algorithm.
+
+swp
+lib: lib/alg/list
+ctx: ~ui
+stack: --
+desc:     Swap the top two data elements of the active stack.
+
+    Sub-word: (swp)
+
+'forth
+lib: REMOVED
+ctx: ~strings
+stack: xt --
+desc: 	Implementation of the "forth" class.
+1/f
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a -- 1/a
+ver: 7.0.5
+desc: 	Replaces FTOS with its reciprocal 
+
+sql_getcol#
+lib: lib/db/mysql
+ctx: ~report
+stack: n -- m
+desc: 	Inside a callback (the "xt" passed to sql_fetch), get the value of column
+	"n" as a number "m"
+
+off
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: ptr --
+desc: 	Stores a zero at the address 'ptr'.  Same as "0 swap !"
+	
+hash:
+lib: lib/data/array
+ctx: ~print
+stack: n <name> --
+ver: 2011.2
+desc: 	Define a new hash table called '<name>', with a bucket size of 'n' cells
+	
+f,
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a --
+desc: 	Put the FP value in FTOS into an fvariable located at "here", and pop the FP
+	value from the FP stack.
+
+regex:
+lib: lib/string/uuid
+ctx: ~os
+stack: a n <name> --
+desc: 	Create a regex which will
+
+openkey
+lib: lib/os/console
+ctx: ~ans
+stack: hkey a n -- hkey
+ver: 6.1.6
+desc: 	Open the subkey (a,n) of the handle "hkey", returning a handle to the
+	opened key.
+	The "root" handles are: "HKCR", "HKCU", "HKLM" and "HKUS"
+	The Windows error code is in the variable "regerr"
+
+caught
+lib: src/reva.f
+ctx: ~sys
+stack: n -- f
+ver: 6.0.12
+desc: 	Deferred word.  The default version of it simply prints
+	"Caught: " and the value of "n", which is the "throw-code"
+	passed to it.
+
+	This word is part of the default Reva "appstart", and you may
+	use it to do something different if an unhandled exception is
+	thrown.
+
+	Returns 'true' to quit the interpreter.
+
+fixed>hebrew
+lib: lib/date/iso
+ctx: ~sunrise
+stack: f -- mm dd yyyy
+desc:      Hebrew date corresponding to the fixed date.
+
+xyemit
+lib: lib/os/tempfile
+ctx: ~util
+stack: x y char --
+desc: 	Move to screen coordinate x,y and print the character.
+
+fsize
+lib: src/revacore.asm
+ctx: ~help
+stack: fileid -- n
+desc: 	Given an open file handle, return the file size.
+	
+zcat
+lib: lib/string/gettext
+ctx: ~os
+stack: src dest --
+ver: 6.1
+desc: 	Append NUL terminated string at "src" to "dest".  It is up to the programmer
+	to ensure that "dest" has enough space to accommodate all the string data.
+
+fnd$
+lib: lib/alg/enum
+ctx: ~ui
+stack: a-str u -- data-ptr... | false
+desc:     A 'fnd' for strings.
+
+    Sub-word: (fnd$)
+
+last@
+lib: lib/alg/dictionary
+ctx: ~reva
+stack: -- n
+ver: 6.0.9
+desc: 	REMOVED in 7.0.3
+	Same as "last @"
+	
+fourth
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b c d -- a b c d a
+ver: 9.0.10
+desc: 	Put copy of the fourth stack item on top of stack.  More
+	efficient than '3 pick'
+	
+.today
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- a n
+desc: 	Prints today's date as "7 Jan 2005"
+
+d=
+lib: lib/math/mod
+ctx: ~struct
+stack: d1 d2 -- flag
+desc: 	Compares the two doubles "d1" and "d2", leaving "true" in TOS if they are
+	equal, and "false" otherwise.
+
+Mon
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 1
+desc: 	Symbolic name for Monday
+
+reset~
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 6.0.8
+desc: 	Drops all contexts off the search order except the first one.
+cmp
+lib: REMOVED
+ctx: ~os
+stack: a1 n1 a2 n2 -- n
+desc: 	Compare two strings, lexicographically. 0 means equal. Useful for
+	sorting lists.
+	
+darray
+lib: lib/ui/gl
+ctx: ~ui
+stack: size <name> --
+desc:     Create a dynamic linear array that expands when full, and con-
+    tracts when half empty (if using 'ins' and 'del'). Resize amount
+    may be changed in the deferred word 'newsize', default 25%.
+
+pre-main
+lib: lib/crypt/rc4
+ctx: ~gpg
+stack: --
+ver: 2000.1
+desc: 	Gets called before 'main'.  Used for application initialization
+
+iconv_ver
+lib: lib/string/trim
+ctx: ~os
+stack: -- version
+desc: 	Return the version of "libiconv" in use.
+
+!!
+lib: lib/os/clipboard
+ctx: ~util
+stack: <line> --
+desc: 	Passes the entire line following it to the system to execute as an external
+	command.  The os-dependent return code is put in "shell_code"
+
+shorts[]:
+lib: lib/alg/array
+ctx: ~strings
+stack: offset n <name> -- offset'
+desc: 	Declares a field "n" shorts (2n bytes) large
+
+rasterheight
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle n
+desc: Returns the current height of the widget specified by handle in pixels.
+
+w@
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a -- n
+desc: 	Gets a short (2-bytes) from "a".
+	
+class!
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: xt --
+ver: 9.0.7
+desc: 	Takes XT of a class implementation word, and sets the
+	currently defined word's class to that.
+	
+	Example:
+
+		: someword
+			create ,
+			...
+			['] 'macro class!
+			;
+
+	(not a great example, but you get the idea)
+
+cb-param
+lib: lib/data/parray
+ctx: ~strings
+stack: n -- m
+desc: 	Retrieves the 'n'th parameter to a 'callback' or 'callback-std' word.
+
+	Because of the way it works, you must save the parameter values off if you
+	call other words which also use callbacks, within your callback word.
+
+fpi
+lib: lib/math/doubles
+ctx: ~test
+stack: float:  -- pi
+desc: 	Puts the constant "pi" in FTOS
+
+seed4@
+lib: lib/timer
+ctx: ~strings
+stack: -- a b c d
+desc: 	NOTE: was 'curseed4'
+	Get the four-cell seed
+
+hbox[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: Creates an hbox widget which is a list of widgets that are arranged horizontally.
+All widgets you create after hbox[ are placed within the hbox.
+You can "close" an hbox widget definition with ]w.
+
+flow-control
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: 	The following words for flow-control are provided by Reva:
+
+		do loop i j unloop leave
+		repeat again while back 
+		eleave
+		remains more skip ?do later 0do
+	
+iconv_close
+lib: lib/string/trim
+ctx: ~os
+stack: desc -- result
+desc: 	Close an open "iconv" handle created with "iconv_open"
+
+prt$
+lib: lib/alg/enum
+ctx: ~ui
+stack: --
+desc:     A 'prt' for strings.
+
+revagui
+lib: lib/revagui/window
+ctx: ~date
+stack: -- handle
+desc: 	Handle of the 'revagui' library, which provides all the GUI support via the
+	FLTK library, available here: http://www.fltk.org/
+
+revaver#
+lib: src/core{lin,win}.asm
+ctx: ~sys
+stack: --
+ver: 6.1.6
+desc: 	Numeric equivalent of the string "revaver".  Currenty, it is
+	represented by the hexadecimal:
+		00MMmmpp
+
+	So Reva 6.1.5 would be:
+		00060105, where
+		"MM" is major release number, e.g. "6"
+		"mm" is minor release, e.g. "1"
+		"pp" is point release, e.g. "5"
+
+fround
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a -- round(a)
+ver: 7.0.11
+desc: 	Replaces FTOS with round(a), which is the integer portion of "a".
+	Example: 
+		: fr. fround f. ;
+
+		1.0001 fr. 
+			1.0000
+		1.5 fr.
+			1.0000
+		1.50001 fr.
+			2.0000
+		-1.001 fr. 
+			-1.0000
+		-1.5001 fr.
+			-2.0000
+
+strncpy
+lib: lib/string/gettext
+ctx: ~os
+stack: a1 n1 a2 n2 N -- a1 min(n2,N)
+ver: 2011.1
+desc: 	Same as 'strcpy', but will copy no more than 'N' characters
+
+canvas[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: Creates a canvas widget. Canvas are mighty widgets to draw stuff on.
+You can use canvas widgets as the basis for your own widgets.
+You can also use a canvas to contain a cd canvas in which you can draw using primitives for lines, points, circles etc.
+You can also connect a canvas to an OpenGL buffer canvas and draw 3D stuff into it.
+
+Close the canvas widget with ]w.
+
+As you see canvas widgets are quite complicated. Please look into the IUP documentation for more details on IUP canvas and study the examples carefully to understand how to work with them with Reva.
+
+data:
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <name> --
+desc: 	Like 'func:' but used to create a reference to exported data.
+	
+round.up
+lib: lib/math/doubles
+ctx: ~test
+stack: --
+desc: 	Changes the FPU rounding mode to "up"
+
+sql_prepared[
+lib: lib/db/mysql
+ctx: ~report
+stack: db^ <varname> ...] --
+ver: 2011.1
+desc: 	Create a SQL prepared statement which automatically initializes the first
+	time it is used.  The 'db^' is a variable containing the database handle to
+	use (because it may change at runtime, it's a variable).   The SQL statement
+	is bounded by a final ']'
+
+	Example:
+
+		db sql_prepared[ sql1 select x from y where z=:1 ]
+
+menu-item[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: a n -- handle
+desc: Create an item (a,n).
+
+.hebrewtoday
+lib: lib/date/iso
+ctx: ~sunrise
+stack: --
+desc: 	 Prints todays date on the Hebrew calendar.
+
+type-dir
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+desc: Turns a file-dialog into a directory selection dialog.
+Usually you will not need to use this word directly. Use dir-dialog[ instead.
+
+}
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- xt
+ver: 6.0.7
+desc: 	Terminates an "inline callback" begun with "{".  Leaves the xt
+	of the callback in TOS, which can be passed to other words as
+	needed.
+	
+xor
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- n
+desc: 	XOR top two items. like C bitwise operator: a ^ b
+	
+fstcw
+lib: lib/math/doubles
+ctx: ~test
+stack: -- n
+desc: 	Retrieves the FPU control word.  See the x87 documents from Intel or AMD for
+	details.
+
+jd>fixed
+lib: lib/string/justify
+ctx: ~sunrise
+stack: jday -- fixed
+desc: 	Converts a Julian calendar date to a fixed date.
+
+big-done
+lib: lib/math/floats
+ctx: ~floats
+stack: a --
+ver: 6.1.6
+desc: 	Frees up the memory allocated to the big number "a".  The big number is
+	invalid after this and should not be used.
+
+with~
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <ctx> --
+ver: 6.0.10
+desc: 	Puts <ctx> in the search order, underneath the current
+	topmost context.  Sort of a "tuck" for contexts.
+
+f=
+lib: lib/math/doubles
+ctx: ~test
+stack: -- f \ float: a b --
+desc: 	Compares the top two items in FP stack and pops them; puts -1 on TOS if
+	equal, zero otherwise.
+
+init-gpg
+lib: lib/crypt/sha1
+ctx: ~bigmath
+stack: -- ctx
+ver: 2011.1
+desc: 	Initialize the 'gpgme' library and return a 'ctx', which is used for further
+	activities.
+
+	If 'ctx' is zero, there was a problem.
+
+create-process2
+lib: lib/os/shell
+ctx: ~rapi
+stack: a n a2 n2 a3 n3 --
+desc: 	Create a process by executing the program named (a,n), with two parameters
+	(a2,n2), (a3,n3).
+	Uses the external library "rss_process.dll" (or SO)
+
+libc
+lib: src/core{lin,win}.asm
+ctx: ~util
+stack: -- n
+desc: 	Returns a "lib" handle for libc. 
+	
+gui-init
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: --
+desc: This word initializes the GUI library. You absolutely need to call this word before you use any other GUI related word from the ~ui context!
+You can reinitialize the GUI library also after a call to gui-release.
+Once you included the ui/gui library (with "needs ui/gui") this word becomes a startup handler. So when you create a turnkey GUI application with save-gui or (save-gui) this word will automatically be called at application startup.
+
+gzwrite
+lib: lib/util/eachline
+ctx: ~strings
+stack: handle buf len -- written
+desc: 	Writes the given number of uncompressed bytes into the compressed file.
+	gzwrite returns the number of uncompressed bytes actually written (0 in case
+	of error).
+
+inline
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: --
+desc: 	REMOVED: 6.1.2
+	Sets the default class ("default_class") to be "'inline".
+	Subsequent words will be of the "inline" class - e.g, words whose
+	bodies are copied directly into the compiled code - rather than
+	the usual, which is to compile a call to the word's code
+	
+sigdig
+lib: lib/math/doubles
+ctx: ~test
+stack: -- a
+desc: 	Number of significant digits (to right of decimal) displayed by "f."
+
+set-time
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle n -- handle
+desc: Sets the timer interval of the timer widget specified by handle. The timer event will occur every nth millisecond.
+
+redir>
+lib: lib/string/misc
+ctx: ~os
+stack: -- a n
+ver: 2010.1
+desc: 	Stop redirection which was started with ">redir", and get the captured
+	string.
+
+in
+lib: lib/util/disasm
+ctx: ~strings
+stack: n --
+desc: 	Linear inches
+
+1+
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- n
+desc: 	Increment TOS: ++n
+	
+fC0
+lib: lib/math/doubles
+ctx: ~test
+stack: -- n
+ver: 7.0.11
+desc: 	Retrieves the FPU status word C0 bit as a flag
+
+-char
+lib: lib/string/gettext
+ctx: ~os
+stack: a n c -- a n
+ver: 6.1.9
+desc: 	Remove all instances of character 'c' from the string (a,n)
+
+.fixed
+lib: lib/string/justify
+ctx: ~sunrise
+stack: f --
+ver: 9.0.6
+desc: 	Prints the fixed date as "7 Jan 2005"
+
+fnd
+lib: lib/alg/enum
+ctx: ~ui
+stack: data -- data-ptr... | false
+desc:     Search for 'data' in the active data structure, returning all
+    matching data pointers, or zero if none found. The deferred
+    word 'match' (default '=') may be redefined. Indirection may
+    be handled by redefining the deferred word 'fetch' (default '@').
+
+    Sub-word: (fnd)
+
+.1x
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n --
+desc: 	Print low 4 bits of a number as 1 hex digit, regardless of "base"
+	
+0drop;
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n -- n|
+ver: 6.0.7
+desc: 	Similar to "0;", but drops the item under TOS as well, if TOS
+	is zero.
+	
+execute
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: xt --
+desc: 	Execute the word whose code is at "xt"
+	
+<>
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n m -- flag
+ver: 6.0.6
+desc: 	Returns true if n!=m, false otherwise
+	
+context?
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: --
+ver: 6.0.10
+desc: 	Returns the body of the context word, or throws an exception.
+
+sallot:
+lib: lib/alg/array
+ctx: ~strings
+stack: <name> -- a
+ver: 6.0.12
+desc: 	Allows you to allocate the memory for a structure within a function.
+	Usually you will create a structure variable in interpreter mode like this:
+		mystruct myvar
+
+	When you want to create a structure variable within your own function, you
+	can do it like this:
+		: t
+		sallot: mystruct  | t will allocate memory for a structure of 'type' mystruct
+		5 over a !        | t will write the value 5 to the field 'a' of this new structure
+		;
+	And then maybe:
+		t a @ . | will print '5'
+
+modindex
+lib: lib/alg/sort-common
+ctx: ~ui
+stack: hash -- offset
+desc:     Modulo the active table's size to obtain the index.
+
+fint
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a -- int(a)
+desc: 	Replaces FTOS with int(a), which is the integer portion of "a".
+	Example: 
+		fpi fint f.
+	will print "3.00000", and 
+		fpi fnegate fint f.
+	will print "-3.00000"
+
+forth
+lib: REMOVED
+ctx: ~strings
+stack: --
+desc: 	Sets the default class ("default_class") to be "'forth".
+	Subsequent words will be of the "forth" class (e.g. "normal" Forth
+	words)
+	
+lookup
+lib: lib/alg/sort-common
+ctx: ~ui
+stack: key -- key bucket
+desc:     Return the bucket address to which 'key' is hashed.
+
++place
+lib: REMOVED
+ctx: ~os
+stack: a n cstr --
+desc: 	Append the string to a cstring, which is up to 255 characters.  
+	
+pik
+lib: lib/alg/list
+ctx: ~ui
+stack: n --
+desc:     Duplicate the data element located 'n' deep to the top of the active stack.
+
+    Sub-word: (pik)
+
+exec
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: dict --
+ver: 6.1.3
+desc: 	Execute the word whose dictionary pointer is at "dict".  This
+	will execute with the correct class semantics, unlike
+	"execute" which simply calls the address passed it.
+	
+>size
+lib: lib/data/base
+ctx: ~hash
+stack: a -- a'
+ver: 2011.2
+desc: 	Return the variable containing the current 'size' of the 
+	array.  The size in this context means the size (in cells) of the
+	allocated space for the array.  It will be at least as big as the
+	'length'.
+	
+>timer
+lib: lib/choices
+ctx: ~reva
+stack: n --
+ver: 9.0.11
+desc: 	Sets (or resets) timer number 'n'.  This is an 'elapsed time' timer.  Use
+	"timer>" to get the elapsed millisecond count.
+
+	Note that if 'n' is not between 0 and 7, the word will silently fail.
+
+sockerror
+lib: lib/net/curl
+ctx: ~curl
+stack: -- n
+desc: 	Returns last socket error:  0 for success, or something else for error.
+
+>size
+lib: lib/alg/dictionary
+ctx: ~reva
+stack: dict -- a
+desc: 	REMOVED in 6.1.2
+	Return the size field pointer from a dictionary pointer.
+
+big+
+lib: lib/math/floats
+ctx: ~floats
+stack: c a b --
+ver: 6.1.6
+desc: 	Sets the big number "c" to the sum of big numbers "a" and "b"
+
+dodoes
+lib: lib/alg/dictionary
+ctx: ~io
+stack: --
+desc: 	REMOVED: 6.1.2
+	Used to implement "does>"
+stack-ops
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: 	Manipulation of data on the 'stack' is one of the most important
+	things to understand in Reva or any Forth.  Every word has a
+	'stack-diagram', which is an explanation of how the word operates
+	on the stack.
+
+	Reva provides these stack manipulation words:
+	
+		dup drop swap over nip tuck rot -rot pick
+		2dup 2drop 2swap 2over 3dup 3drop
+	
+	Information about the stack can be got with:
+
+		.s depth
+	
+eu-dst?
+lib: lib/string/justify
+ctx: ~sunrise
+stack: f -- flag
+ver: 6.1.4
+desc: 	Using European Union rules, return whether or not the fixed date "f" falls
+	during Daylight Saving Time (DST).
+
+cm2
+lib: lib/util/disasm
+ctx: ~strings
+stack: n --
+desc: 	Square centimeters
+
+unbold
+lib: lib/os/tempfile
+ctx: ~util
+stack: --
+desc: 	Unbold the foreground colour (if bold).
+
+]fd
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+desc: Closes the definition of a file or directory dialog.
+
+drp
+lib: lib/alg/list
+ctx: ~ui
+stack: --
+desc:     Drop the top data element from the active stack.
+
+    Sub-word: (drp)
+
+rangeof
+lib: src/reva.f
+ctx: ~strings
+stack: low high --
+ver: 6.0.11
+desc: 	Same as "of", but the case selector is tested against the
+	range (low,high), and the case is selected if the selector is
+	"between" (inclusive).
+
+zlib_compressBound
+lib: lib/util/eachline
+ctx: ~strings
+stack: len -- maxlen
+desc: 	Returns the maximum size required to compress "len" bytes.
+
+setfind~
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: xt <ctx> --
+ver: 6.0.8
+desc: 	Sets the "find-dict" for <ctx> to be "xt"
+strsplit
+lib: lib/string/gettext
+ctx: ~os
+stack: a1 n1 a2 n2 -- a3 n3 a4 n4 true | a1 n1 false
+ver: 7.0.2
+desc: 	Similar to "split", except it splits (a1,n1) on the first occurrence of
+	(a2,n2).
+
+sql_next
+lib: lib/db/mysql
+ctx: ~report
+stack: x xt -- f
+ver: 2011.1
+desc: 	Return next row after "sql_first" or "sql_next".  
+	If a row was found, execute "xt" and return TOS.  Otherwise return "false"
+	and set sql_error.
+
+big*n
+lib: lib/math/floats
+ctx: ~floats
+stack: c a n --
+ver: 6.1.6
+desc: 	Same as "big*" but multiplies by the single "n" intead of a big number
+
+split-path
+lib: lib/os/exception
+ctx: ~util
+stack: a n -- a1 n1 a2 n2
+desc: 	Separates the directory and filename parts of the pathname (a,n).  It works
+	identically on all platforms - ie. you can analyze Unix pathnames on Windows
+	and vice versa.
+
+	Example: 
+		" /abc/hello.txt" split-path
+
+help-context:
+lib: lib/alg/dictionary
+ctx: ~
+desc: Context:
+purim
+lib: lib/date/iso
+ctx: ~sunrise
+stack: year -- fixed
+desc: 	 Returns the fixed date on which Purim falls during the Gregorian year
+	 passed in.
+
+deletekey
+lib: lib/os/console
+ctx: ~ans
+stack: hkey a n --
+ver: 6.1.6
+desc: 	Delete the subkey (a,n) of the handle "hkey".
+	The Windows error code is in the variable "regerr"
+
+settempdir
+lib: lib/debugger
+ctx: ~util
+stack: a n --
+desc: 	Sets the path for creating temporary files.  If not set, will default to
+	whatever the system default is (/tmp on Linux, and GetTempPath() on
+	Win32)
+
+SIGKILL
+lib: lib/os/process
+ctx: ~process
+stack: -- n
+ver: 6.1.6
+desc: 	Value of the "KILL" signal
+
+col
+lib: lib/db/common
+ctx: ~report-define
+stack: n  --
+ver: 2011.1
+desc: 	During the execution phase of a SQL query, returns column "n" of the
+	result set, as a string.  Columns are numbered from "1".
+
+-pek
+lib: lib/alg/list
+ctx: ~ui
+stack: -- data
+desc:     Peek at the data element on the bottom of the active stack.
+
+    Sub-word: (-pek)
+
+compare
+lib: lib/alg/structs
+ctx: ~strings
+stack: a1 a2 -- flag
+desc: 	Comparison routine for the various "sort" libraries.
+
+sp
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- a
+desc: 	Puts the current value of the stack pointer (ESI) on TOS.
+	
+]dw
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+ver: 9.0.11
+desc: Closes a widget definition same as "]d", but does not make the item 'topmost'.
+Used in conjunction with dialog[.
+
+SIGALRM
+lib: lib/os/process
+ctx: ~process
+stack: -- n
+ver: 6.1.6
+desc: 	Value of the "ALaRM" signal
+
+reveal
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: <name> --
+desc: 	REMOVED in 6.0.10
+	Used inside a loc:...loc; block, makes the word <name> visible
+	outside that block.
+	
+stack-size
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: stack -- n
+ver: 6.0.9
+desc: 	Returns number of items currently on the stack
+
+search2
+lib: lib/string/gettext
+ctx: ~os
+stack: a1 n1 a2 n2 -- a3 n3 -1 | a1 n1 a2 n2 0
+desc: 	Same as "search", but on failure returns the original arguments as well.
+
+z"
+lib: src/core{lin,win}.asm
+ctx: ~os
+stack: <name>" -- z
+ver: 6.0.5
+desc: 	Create a NUL terminated string (C string) and put just the address
+	on TOS.  Essentially the same as using "zt" after a string.
+	
+help-only:
+lib: lib/alg/dictionary
+ctx: ~
+desc: ONLY
+f0
+lib: lib/math/doubles
+ctx: ~test
+stack: float:  -- 0.0
+desc: 	Puts 0.0 in FTOS
+
+sql_bind_blob
+lib: lib/db/mysql
+ctx: ~report
+stack: x pos a n --
+ver: 9.0.11
+desc: 	Binds the BLOB value "(a,n)" to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+
+Iyar
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 2
+desc: 	Symbolic name for the Hebrew month "Iyar"
+
+matrix[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: A matrix widget is a table with rows and columns. Matrix widgets are controlled via lots of attributes. Please look into the IUP documentation and into the examples for more details.
+
+stop-timer
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+desc: Stopd the timer specified by handle. After a timer is stopped it will no longer fire timer events.
+
+ins
+lib: lib/alg/enum
+ctx: ~ui
+stack: data ... --
+desc:     Insert 'data' into the active data structure, with the following
+    arguments:
+
+    list, htable, bintree ( data --)
+    array, darray ( data a --)
+    2array ( data x y --)
+    3array ( data x y z --)
+    
+    Sub-word: (ins)
+
+h0
+lib: REMOVED
+ctx: ~io
+stack: -- a
+desc: 	Variable holding value of start of code space (where "here"
+	starts)
+	
+align
+lib: REMOVED
+ctx: ~strings
+stack: --
+desc: 	Align "here" to the next four-byte boundary.
+	
+cmdline
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: Reva accepts the following command-line options:
+
+  -h       prints this helps screen and quits
+  -v       shows the Reva version and quits
+  -n lib   same as entering 'needs lib' in Reva
+  -c dir   change to directory 'dir' before continuing
+  -d       enable the debugger
+  -e words eval 'words' 
+  -a       start the ANS compatibility layer
+  -t       set 'TESTING' mode
+
+Anything else on the command-line will be interpreted as a file name
+to include.  If the file does not exist or is unreadable, Reva will
+not complain.
+
+mysql
+lib: lib/net/ftp
+ctx: ~report
+stack: --
+ver: 6.1.8
+desc: 	Sets the deferred database access words to use the SQLite bindings.
+	This word is automatically called when the this library is used.
+
+randomize
+lib: lib/timer
+ctx: ~strings
+stack: --
+desc: 	Initialize the random number generator based on the time.
+
+randomize
+lib: lib/random/common
+ctx: ~strings
+stack: --
+desc: 	Initialize the random number generator based on the time.
+
+>
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: m n -- flag
+desc: 	Returns 'true' or 'false' depending on the test "m>n" using
+	signed-math.
+	
+hboxs[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: Similar to hbox[ this word creates an hbox widget. A spacer is automatically inserted at the beginning of the hbox's widget list.
+"Close" an hbox definition with ]c.
+
+swap
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- b a
+desc: 	Swap the top two stack items 
+	
+xml-parse
+lib: lib/app/gui
+ctx: ~sockets
+stack: h a n -- f
+desc: 	Parse the string (a,n) using the parser "h".  Returns a flag indicating
+	success or failure.
+
+xytype
+lib: lib/os/tempfile
+ctx: ~util
+stack: x y a u --
+desc: 	Move to screen coordinate x,y and type the string.
+
+clamp
+lib: src/reva.f
+ctx: ~reva
+stack: n max -- n
+ver: 6.1.10
+desc: 	"Clamps" the value "n" to the range 0..max, inclusive.
+
+rtrim
+lib: lib/string/regex
+ctx: ~os
+stack: a n -- a' n'
+desc: 	trim from the right
+
+{{
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 6.1.11
+desc: 	Begins an anonymous code fragment.  Paired with "}}"
+
+push~
+lib: src/reva.f
+ctx: ~strings
+stack: --
+ver: 6.0.13
+desc: 	Saves the current depth of the context "search order", to be
+	restored later using "pop~".  This is intended mainly for
+	library authors who might use it like so:
+
+		| order is now: ~ ~util ~strings
+		push~
+		~sys ~ context: ~xyz
+		~xyz
+		| order is now: ~xyz ~ ~sys ~ ~util ~strings
+			...
+		pop~
+		| order is now: ~ ~util ~strings
+
+	Essentially it makes managing arbitrary context depth easy.
+	Just be aware that one should NOT use "with~", at least not as
+	the first context is added, since that will result in an
+	incorrect ordering after the final "pop~".  
+
+	This word does NOT save the actual ordering, it merely
+	saves the ordering depth.
+
+thanksgiving
+lib: lib/date/church
+ctx: ~sunrise
+stack: year -- fixed
+desc: 	 Returns fixed date for Thanksgiving Day on the given year.
+
+SIGQUIT
+lib: lib/os/process
+ctx: ~process
+stack: -- n
+ver: 6.1.6
+desc: 	Value of the "QUIT" signal
+
+c>xy
+lib: lib/ui/gl
+ctx: ~ui
+stack: a -- x y
+desc:     Given a cell in the active (2-D) array, return the corres-
+    ponding coordinates (x,y). Origin is first cell, 0,0.
+
+save
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: <name> --
+desc: 	Saves the 
+		current Reva to the file "<name>" as a 'turnkey'
+	program. 
+		
+	
+xyz>c
+lib: lib/ui/gl
+ctx: ~ui
+stack: x y z -- a
+desc:     Given coordinates (x,y,z), return the corresponding cell in
+    the active (3-D) array. Origin is first cell, 0,0,0.
+
+MAC
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- f
+ver: 9.0.2
+desc: 	Returns "true" if running under OS/X, "false" otherwise.
+
+Kislev
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 9
+desc: 	Symbolic name for the Hebrew month "Kislev"
+
+&&
+lib: src/reva.f
+ctx: ~strings
+stack: a b -- flag
+ver: 6.1.9
+desc: 	Logical "and" of a and b.  Not a bitwise "and".
+
+super>
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <name> --
+ver: 6.1.8
+desc: 	Calls the code just after "does>" in the word "<name>".  Use
+	to override or superclass an existing word.
+
+	Example:
+		: const   create , does> @ ;
+		: const++ create , does> super> const 1+ ;
+
+-pek$
+lib: lib/alg/list
+ctx: ~ui
+stack: -- a-string u
+desc:     A '-pek' for strings.
+
+    Sub-word: (-pek$)
+
+compile
+lib: REMOVED
+ctx: ~strings
+stack: a --
+desc: 	Compiles a call to the address "a"
+	
+w!
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n a --
+desc: 	Puts the short (2-bytes) "n" at "a".
+	
+_+
+lib: src/reva.f
+ctx: ~strings
+stack: a b n --  a+n b
+ver: 6.1.9
+desc: 	Add "n" to the second stack item.  Like "+" but for the item
+	under TOS.  Much more efficient than "rot + swap"
+
+?dup
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- n n
+desc: 	Duplicates TOS if it's not zero. 
+	
+3cell+
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n -- n
+desc: 	Advance "n" by three cells (12 bytes) 
+	
+cr
+lib: src/core{lin,win}.asm
+ctx: ~help
+stack: --
+desc: 	Output a CR character (move to next line) 
+	
+pop~
+lib: src/reva.f
+ctx: ~strings
+stack: --
+ver: 6.0.13
+desc: 	Companion to "push~", it restores the context search order.
+
+	This word does NOT restore the actual ordering, it merely
+	restores the ordering depth.
+
+alias:
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: newname oldname --
+desc: 	Create alias 'newname' for the word 'oldname', keeping the proper
+	class semantics of the old word.
+	
+resize-cb:
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle <name> -- handle
+desc: Sets the RESIZE_CB callback of the specified widget,
+
+tp
+lib: REMOVED
+ctx: ~io
+stack: -- a
+desc: 	Puts the pointer to the input buffer (TIB) on TOS.
+	
+nolib
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a n --
+ver: 9.0.2
+desc: 	Types the message: "There is no xxx library for yyy", and then
+	quits Reva.
+
+	'xxx' is the string passed in, 'yyy' is the operating system
+	Reva is running on.
+
+	The is used in libraries to avoid loading a library which is
+	not supported on a particular OS.
+
+rnd-seed
+lib: lib/random/common
+ctx: ~strings
+stack: n --
+desc: 	Use the value 'n' as the 'seed' for the random generator
+
+>digit
+lib: REMOVED
+ctx: ~reva
+stack: n -- c
+desc: 	Convert digit to its ASCII representation 
+	Example:
+		10 >digit emit
+	shows 'A'
+	
+classes
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: 	Classes define the behavior of a word when executed by Reva.  A
+	word's class is usually defined at the same time as the word is,
+	but it can be modified later if desired.  The usual technique in
+	Reva is to define a series of words using the same class,
+	together; then switch back to the default 'forth' class:
+
+		macro
+		: in1 ... ;
+		: in2 ... ;
+		forth
+
+	
+xt?
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: <name> -- xt | throw
+ver: 6.0.10
+desc: 	Parses the next word in the input, and returns its xt or
+	throws an exception if it is not a valid word or is not
+	visible in the search-order.
+
+fswap
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a b  -- b a
+desc: 	Swaps the top two items in the FP stack
+
+open/rw
+lib: src/revacore.asm
+ctx: ~help
+stack: a n -- h
+desc: 	Like 'open/r' but open for both reading and writing.
+	
+memorial-day
+lib: lib/date/church
+ctx: ~sunrise
+stack: year -- fixed
+desc: 	 Returns fixed date for Memorial Day on the given year.
+
+hebrew-leap-year?
+lib: lib/date/iso
+ctx: ~sunrise
+stack: year -- flag
+desc: 	Returns whether or not the Hebrew year is a leap year on Hebrew calendar
+
+sql_bind_string
+lib: lib/db/mysql
+ctx: ~report
+stack: x pos a n --
+ver: 9.0.11
+desc: 	Binds the string value "(a,n)" to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+
+'alias
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: xt --
+ver: 6.0.7
+desc: 	REMOVED: 6.1.2
+	Class of aliases
+	
+f@8
+lib: lib/math/doubles
+ctx: ~test
+stack: a --  | float: -- x
+desc: 	Puts the FP value from (double-cell sized) 2variable "a" into FTOS
+
+fullscreen
+lib: lib/os/tempfile
+ctx: ~util
+stack: t --
+desc: 	'true' sets to fullscreen mode, 'false' to a window. Currently
+    Windows only.
+
+\char
+lib: REMOVED
+ctx: ~os
+stack: a n c -- a1 n1
+desc: 	Same as /char but scans from the end of the string  
+	
+fatan
+lib: lib/math/doubles
+ctx: ~test
+stack: float:  a -- atan(a)
+desc: 	Replaces FTOS with its arctangent 
+
+has-separator?
+lib: lib/os/exception
+ctx: ~util
+stack: a n -- flag
+desc: 	Returns true if the pathname (a, n) already has a terminating path separator
+	and false otherwise.
+
+sql_fetch
+lib: lib/db/mysql
+ctx: ~report
+stack: handle a n xt -- m
+desc: 	Executes the SQL string (a,n) on the database handle, calling "xt" (a normal
+	Reva word) for each row of the result.  Returns the number of rows
+	processed.  The "xt" has the stack diagram ( n -- flag ): "n" is the number
+	of columns in the result, and the return value is "false" to continue
+	processing and "true" to stop.  Inside the callback one may use
+	"sql_getcol$" and "sql_getcol#" to return the n'th column of the result.
+
+defer@
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: xt -- xt'
+desc: 	REMOVED in 9.0.11
+	Given the xt of a deferred word, returns the current value the
+	word will execute.
+	
+rr>
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- n
+desc: 	Removes the second value off the return-stack. "nip" for the
+	return-stack.
+	
+dialogs[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: Create a dialog widget and add a spacer to it. Close a dialogs definition width ]ds.
+
+?lib
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: a n a n <name> --
+ver: 6.0.5
+desc: 	REMOVED in 6.1.9
+	Convenience wrapper around "lib".
+	Load either the Linux or the Windows library as specified.  First
+	string is the Linux one, the second string is the Windows version.
+	
+uni>utf
+lib: lib/string/trim
+ctx: ~os
+stack: a n -- a' n'
+ver: 6.0.9
+desc: 	Converts the string (a,n) from ucs-2 encoding to utf-8le.  Resultant string
+	is NUL terminated as well.
+
+	The returned string is "allocate"d so you have to "free" it
+
+rasterwidth
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle n
+desc: Returns the current width of the widget specified by handle in pixels.
+
+(seek)
+lib: src/core{lin,win}.asm
+ctx: ~help
+stack: whence offset handle -- offset' | ioerr
+desc: 	Used to implement "seek"; this word is similar to the Unix "fseek"
+	word, and has the same semantics.  "whence" is one of:
+
+	0 - SEEK_SET, from the beginning of the file
+	1 - SEEK_CUR, relative to the current position, or
+	2 - SEEK_END, from the end of the file
+
+	On success, returns the resulting offset. Otherwise, a system
+	dependent error code is returned.
+
+isleap?
+lib: lib/string/justify
+ctx: ~sunrise
+stack: yyyy -- flag
+desc: 	Return true if the input year is a leap year (according to the Gregorian
+	rules!).  This will not be correct for Julian era years.
+
+gregorian>fixed
+lib: lib/string/justify
+ctx: ~sunrise
+stack: mm dd yyyy -- f
+desc: 	Convert the MM/DD/YYYY Gregorian date to a fixed date.
+
+timer
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- handle
+desc: Creates a timer widget. You don't need to close timer widgets with ]w or ]c or so because timer widgets don't need to be added to parent widgets.
+
+/
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- d
+desc: 	Divide a by b (signed): n=a/b
+	
+d2/
+lib: lib/math/mod
+ctx: ~struct
+stack: d1 -- d2
+ver: 6.1.6
+desc: 	Divide the double "d1" by 2, giving "d2"
+
+nfnvhash
+lib: lib/alg/sort-common
+ctx: ~ui
+stack: int -- hash
+desc:     Hash an integer through the FNV-1a algorithm.
+
+rastersize?
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle a n
+desc: Returns the current size of the widget in pixels. The string has the format " widthxheight".
+
+2nip
+lib: src/reva.f
+ctx: ~strings
+stack: a b c d -- c d
+ver: 6.1.1
+desc: 	"nip" for double-cells.  Equivalent of "2swap 2drop".  
+	
+chooser
+lib: lib/random/gm
+ctx: ~strings
+stack: lo hi -- lo..hi-1
+desc: 	Select a number between lo and hi-1 inclusive.
+
+sql_rollback
+lib: lib/db/mysql
+ctx: ~report
+stack: db --
+ver: 6.1.8
+desc: 	Issues a "ROLLBACK" to the database "db".
+
+put
+lib: lib/data/array
+ctx: ~print
+stack: b m a n h  --
+ver: 2011.2
+desc: 	Insert the key (a,n) with the payload (b,m) into the hash table h
+	
+put
+lib: lib/data/base
+ctx: ~hash
+stack: M n A --
+ver: 2011.2
+desc: 	Set item A[n] to M.  If "n" is beyond the upper limit of A, the limit will
+	be extended and the array memory reallocated.
+	
+um*
+lib: lib/math/mod
+ctx: ~struct
+stack: u1 u2 -- ud
+desc: 	Multiplies two unsigned singles "u1" and "u2", leaving the double unsigned
+	result "ud"
+
+put
+lib: lib/util/auxstack
+ctx: ~reva
+stack: a n --
+ver: 6.0.6
+desc: 	NOTE: In 9.0.8 moved to util/misc
+	Invert of "pick".  Puts value "a" at the "n"th location in stack.
+	
+run-report-by-name
+lib: lib/db/common
+ctx: ~report
+stack: db a n --
+ver: 2011.1
+desc: 	Run the report with the short-name (a,n) in the database 'db'
+
+sql_lastid
+lib: lib/db/mysql
+ctx: ~report
+stack: handle -- rowid
+desc: 	Given a database handle, return the id of the last row entered.
+
+enum;
+lib: lib/alg/quicksort
+ctx: ~strings
+stack: n --
+desc: 	Terminates the enumeration started with "enum:"
+
+]
+lib: REMOVED
+ctx: ~strings
+stack: --
+desc: 	Return to the compiler
+	
+open/r
+lib: src/revacore.asm
+ctx: ~help
+stack: a n -- h
+desc: 	Open the named file for reading.  Sets 'ioerr' appropriately to
+	indicate failure.  
+	
+	Will fail if the file does not exist or if the user has
+	insufficient privileges to access it.  In these cases, the
+	value of 'h' is indeterminate.
+	
+fnvhash
+lib: REMOVED
+ctx: ~reva
+stack: a n -- m
+desc: 	Returns the FNV-1a hash of the string passed in.
+>clipboard
+lib: lib/os/threads
+ctx: ~util
+stack: a n -- true|a n false
+ver: 7.0.6
+desc: 	Puts the string (a,n) onto the clipboard.  Returns a flag indicating success
+	or failure.
+
+line-text?
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle n -- handle a m
+desc: Used on an editbox widget this word returns the text currently stored in line n.
+
+throw-codes
+lib: src/core{lin,win}.asm
+ctx: ~
+desc: 	These are the predefined codes 'throw' will use from Reva:
+
+		THROW_GENERIC THROW_BADFUNC THROW_BADLIB THROW_NEEDS
+	
+argv
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- addr len
+desc: 	Get command-line argument "n". The number is in the range
+	0.."argc". The first argument, "0 argv" is the name of the
+	program; 1 is the index of the first user-supplied argument, etc.  
+
+	If you pass a value that is out of range, it will be clamped to
+	the proper range.  So "-1 argv" is the same as "0 argv"
+	
+key-any-cb:
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle <name> -- handle
+desc: Sets the KEY_ANY_CB callback of the specified widget.
+
+(.)
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n -- a n
+desc: 	Converts a number to a string using the current "base", without
+	trailing space. Used by "."
+	
+	NOTE: The string returned should be saved elsewhere if you won't
+	use it immediately!
+
+	
+."
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <str>" --
+desc: 	Types the string <str>.  The same string definition rules apply as
+	for "
+	
+(compsize)
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Variable holding the size of the compiled string space.  Can
+	be set before performing a "save" to change the default value.
+        
+ahead
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- a
+ver: 6.0.4
+desc: 	Sets up a relative jump, and leaves "here" on TOS.  
+	
+big-n
+lib: lib/math/floats
+ctx: ~floats
+stack: c a n --
+ver: 6.1.6
+desc: 	Same as "big-" but subtracts the single "n" instead of a big number
+
+listen
+lib: lib/net/curl
+ctx: ~curl
+stack: sock backlog -- result
+desc: 	Makes the socket listen for incoming connections.
+	Returns 0 for success, or something else for error.
+
+show
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: handle -- handle
+desc: Shows the widget at the default position that is configured for your system.
+Also recursively shows all subwidgets of the widget.
+So you only need to call show for a dialog and it gets visible with all widgets placed on it.
+Showing a widget automatically maps it to its native widget representation. So you don't need to call gui-map explicitly to widgets that you make visible with show
+
+Show is used to display modeless dialogs - use popup to handle modal window handling...
+
+strof
+lib: src/reva.f
+ctx: ~strings
+stack: a n --
+ver: 6.0.11
+desc: 	Same as "of", but the case selector is a string (a,n)
+	instead of a cell
+
+(s0)
+lib: src/core{lin,win}.asm
+ctx: ~io
+stack: -- a
+ver: 6.0.6
+desc: 	Address of value holding current beginning of stack.
+	
+cleanup
+lib: lib/alg/dictionary
+ctx: ~io
+stack: --
+desc: 	REMOVED in 6.1.2
+	Deferred word which is called by the default 'bye'. Useful for
+	closing files etc.  
+xml-free-parser
+lib: lib/app/gui
+ctx: ~sockets
+stack: h --
+desc: 	Frees the allocated parser and invalidates it.
+
+sql_bind_blobz
+lib: lib/db/mysql
+ctx: ~report
+stack: x pos n --
+ver: 9.0.11
+desc: 	Binds a BLOB value of "n" zeros  to the parameter in the compiled SQL "x", whose
+	position is "pos".  
+
+	Positions are left to right, and start at 1.
+
+uuid
+lib: lib/string/xmlparse
+ctx: ~strings
+stack: -- a b c d
+ver: 7.0.10
+desc: 	Generates 128 bits of a  "type 4" (random) UUID
+
+auxN
+lib: lib/util/zlib
+ctx: ~strings
+stack: -- n
+desc: 	Get number of items on auxilliary stack
+
+fnegate
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a  -- -a
+desc: 	Replaces FTOS with its negation 
+
+ctype
+lib: src/revacore.asm
+ctx: ~strings
+stack: a --
+ver: 9.0.9
+desc: 	Print a cstring.  Equivalent of 'count type'
+	
+_@
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- n b
+ver: 2011.1
+desc: 	Get the value pointed to by 'a', the value under TOS, and
+	leave it under TOS.  This is like "swap @ swap"
+	
+findprev
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: dict -- dict2
+ver: 6.0.6
+desc: 	Given a dictionary entry pointer, finds the entry which is just
+	before it in the list of entries. 
+	
+.classes
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+ver: 6.0.8
+desc: 	Prints out a list of all classes which have been defined so far.
+
+]fr
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: parent a n handle handle -- parent
+desc: Closes the definition of a frame widget.
+
+.timer
+lib: lib/choices
+ctx: ~reva
+stack: n --
+ver: 9.0.11
+desc: 	Prints the value 'n' as elapsed milliseconds, in the format "HH:MM:SS.MMM"
+
+temp
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: -- a
+desc: 	Variable for anyone to use for any purpose 
+	
+(env)
+lib: lib/alg/dictionary
+ctx: ~io
+stack: --
+desc: 	REMOVED in 6.1.1
+	Pointer to environment strings array.  You probably want "getenv"
+	
+last!
+lib: lib/alg/dictionary
+ctx: ~reva
+stack: n --
+ver: 6.0.9
+desc: 	REMOVED in 7.0.3
+	Same as "last !"
+	
+setvalueex
+lib: lib/os/console
+ctx: ~ans
+stack: hkey a n type a1 n1 --
+ver: 6.1.6
+desc: 	Essentially the same as "setvalue"
+
+cut
+lib: lib/alg/list
+ctx: ~ui
+stack: --
+desc:     Cut, or nip, the second data element from the active stack.
+
+    Sub-word: (cut)
+
+-pop$
+lib: lib/alg/list
+ctx: ~ui
+stack: -- a-string u
+desc:     A '-pop' for strings.
+
+    Sub-word: (-pop$)
+
+big!:
+lib: lib/math/floats
+ctx: ~floats
+stack: n <name> --
+ver: 6.1.6
+desc: 	Like "big:", but also initializes the big number to the single "n"
+
+Feb
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 2
+desc: 	Symbolic name for February
+
+sqlite_exec_cb
+lib: lib/db/mysql
+ctx: ~report
+stack: handle a n cb --
+desc: 	Same as "sql_exec", but calls the "cb" (which must be a "callback", not
+	a regular Reva word) for each row in the result.
+
+foreach
+lib: lib/util/auxstack
+ctx: ~strings
+stack: xt hi lo --
+ver: 7.0.5
+desc: 	NOTE: In 9.0.8 moved to util/misc
+
+	One-line loop construct.  Call 'xt' for each value from 'lo'
+	to 'hi' (not including 'hi').  
+
+	Example:
+
+	    { . } 20 10 foreach
+
+	This uses an anonymous xt, and will print "10..19".
+
+npek$
+lib: lib/alg/list
+ctx: ~ui
+stack: n -- a-string u
+desc:     A 'npek' for strings.
+
+    Sub-word: (npek$)
+
+base!
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n --
+ver: 6.0.7
+desc: 	Set the value of "base" to "n".
+	
+>argv
+lib: lib/os/clipboard
+ctx: ~util
+stack: -- a
+ver: 9.0.9
+desc: 	Ends the creation of an 'argv' list.  The returned address is an allocated
+	array of cells, each one containing an item which was on the stack after the
+	'argv>' word.  The array is terminated with a zero cell.
+
+	This is used to pass, for example, to 'doexec' (on Linux and Mac), which
+	expects and argv[] type array of parameters.
+
+	Example:
+
+		argv>
+			z" ls"
+			z" -lrt"
+		>argv doexec
+
+dodefer
+lib: lib/alg/dictionary
+ctx: ~strings
+stack: --
+ver: 6.0.4
+desc: 	REMOVED in 6.1.1
+	Internal implementation word for defer
+	
+gui-default
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: -- -2
+desc: A return code used within callbacks to flag that the event loop shall be processed as usual.
+
+round.trunc
+lib: lib/math/doubles
+ctx: ~test
+stack: --
+desc: 	Changes the FPU rounding mode to "truncate"
+
+*
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b -- n
+desc: 	Multiply top two items (signed): n=a*b
+	
+*/_mod
+lib: lib/testing
+ctx: ~strings
+stack: amount multiplier divisor --  rem quot
+desc: 	Like "*/_" but returns remainder as well
+
+||
+lib: src/reva.f
+ctx: ~strings
+stack: a b -- flag
+ver: 6.1.9
+desc: 	Logical "or" of a and b.  Not a bitwise "or".
+
+addr
+lib: lib/util/patchmgr
+ctx: ~strings
+stack: <local> --
+desc: 
+   Puts the address of <local> on to tos. 
+   Can also be used with a value.
+
+connectsocket
+lib: lib/net/curl
+ctx: ~curl
+stack: a n port -- sock
+desc: 	Connect to the specified host and port with TCP.  If 'n' is non-zero, then
+	(a,n) is the name of a server.  If 'n' is zero, then 'a' is an IP address.
+
+	Returns -1 on failure, or a valid socket on success.
+
+parseln
+lib: src/reva.f
+ctx: ~strings
+stack: -- a n
+ver: 6.1.9
+desc: 	Same as "10 parse".  Returns the entire line after the word.
+
+fdrop
+lib: lib/math/doubles
+ctx: ~test
+stack: float:  a b -- a
+desc: 	Drops FTOS
+
+dst?
+lib: lib/string/justify
+ctx: ~sunrise
+stack: f -- flag
+ver: 6.1.4
+desc: 	Using US/Canadian rules, return whether or not the fixed date "f" falls
+	during Daylight Saving Time (DST).
+
+defer
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: <name> --
+desc: 	Create a deferred word "<name>". Initially this word will do
+	nothing.  Must be set to something more useful using "is".  
+	
+f*
+lib: lib/math/doubles
+ctx: ~test
+stack: float: a b  -- a*b
+desc: 	Sets FTOS to the product of the top two values.
+
+1,
+lib: REMOVED
+ctx: ~strings
+stack: n --
+desc: 	Put one byte at "here", and increment here by
+	the number of bytes put there. 
+2swap
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: a b c d -- c d a b
+desc: 	Swap top doubles
+	
+2cell+
+lib: src/core{lin,win}.asm
+ctx: ~reva
+stack: n -- n
+desc: 	Advance "n" by two cells (8 bytes) 
+	
+Tevet
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 10
+desc: 	Symbolic name for the Hebrew month "Tevet"
+
+Nissan
+lib: lib/date/iso
+ctx: ~sunrise
+stack: -- 1
+desc: 	Symbolic name for the Hebrew month "Nissan"
+
+>rr
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n --
+desc: 	Puts "n" under the top of the return-stack.  "tuck" for the
+	return-stack.
+	
+reset
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Resets stack to initial settings (e.g. drops everything) 
+	
++!
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: n a --
+desc: 	Add "n" to cell at location "a". Same as effect as:
+
+		swap over @ + swap !
+
+gzclose
+lib: lib/util/eachline
+ctx: ~strings
+stack: handle -- result
+desc: 	Flushes all pending output if necessary, closes the compressed file and
+	deallocates all the (de)compression state. The return value is the zlib
+	error number (see function gzerror below).
+
+decimal
+lib: src/core{lin,win}.asm
+ctx: ~strings
+stack: --
+desc: 	Sets "base" to 10.
+	
+0term
+lib: lib/alg/dictionary
+ctx: ~os
+stack: a n -- a n
+desc: 	removed in 2011.1
+	Forces the string "a,n" to be NUL terminated.
+	
+closemutex
+lib: lib/os/fakeconsole
+ctx: ~util
+stack: a --
+ver: 7.0.6
+desc: 	Closes the mutex at 'a' and releases any resources it used to the OS.
+
+toggle[
+lib: lib/ui/gui-db
+ctx: ~ui-priv
+stack: a n -- handle
+desc: Creates a checkbox widget. Close the definition with ]w.
+
+Sun
+lib: lib/string/justify
+ctx: ~sunrise
+stack: -- 0
+desc: 	Symbolic name for Sunday
+
+pdf-new
+lib: lib/print/base
+ctx: Exception: 0000000B at: 082637EE 

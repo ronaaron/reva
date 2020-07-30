@@ -1,0 +1,206 @@
+| vim: ft=reva :
+| Parses date strings
+
+push~
+needs date/calendar
+needs string/misc
+~date
+
+0 constant DATEMDY
+1 constant DATEDMY
+2 constant DATEYMD
+
+DATEMDY variable, date-fmt
+40 variable, year-cutoff
+
+: month-ok?  1 12 between ;
+: day-ok? 1 31 between ;
+| date in format: "MM/DD/YYYY"
+: parse'date ( a n c -- f true | a n false )
+	>r
+	2dup
+	| see if there is a separator character
+	r> split[] dup 0if 3drop false ;then
+	| there is a '/', so see if we understand the date:
+	dup 2 >if
+		| too many separator characters.  this cannot be a proper date
+		1+ 0do 2drop loop
+		false 
+	;then
+
+	| two or three components.
+	| 2 => yyyy ddd mmm
+	| 1 => yyyy mmm
+	1 =if 
+		" 1" 
+		date-fmt @ DATEMDY =if
+			2swap
+		then
+		date-fmt @ DATEYMD =if
+			| mm yy dd --> dd mm yy
+			2swap   | mm dd yy
+			>r >r	| mm dd
+			2swap	| dd mm
+			r> r>	| dd mm yy
+		then
+	then
+	| convert to numbers:
+	>single 
+	0if
+		2drop 2drop 2drop false 
+	;then
+	>r
+	>single 0if
+		2drop 2drop rdrop false 
+	;then
+	r>
+	| a n ddd mmm 
+	swap 2swap | mmm ddd a n
+	>single 0if
+		2drop 2drop false
+	;then
+	| correct other formats to MDY
+	| mmm ddd yyyy
+	date-fmt @ DATEDMY =if >r swap r> then	
+	date-fmt @ DATEYMD =if rot then	
+
+	third month-ok? 0if
+		3drop false
+	;then
+	over day-ok? 0if
+		3drop false
+	;then
+
+	| if year is < 100, then if < 40 assume 2000 else 1900
+	dup 100 <if
+		dup year-cutoff @ <if 2000 else 1900 then +
+	then
+	gregorian>fixed
+	-rot 2drop true
+	;
+: parseNdate false ;
+
+: set-date-fmt ( fmt -- ) date-fmt !  ;
+: set-year-cutoff ( yy -- ) year-cutoff ! ;
+: parsedate ( a n -- f true | a n false )
+	'/ parse'date if true ;then
+	'- parse'date if true ;then
+	'. parse'date if true ;then
+	parseNdate if true ;then
+	false
+	;
+pop~ 
+
+[IFTEST]
+needs testing
+with~ ~date
+." Testing date parsing library" cr
+test: MDY
+	0
+	" 1/2/3" parsedate 0if false else
+		Jan 2 2003 gregorian>fixed =
+	then
+	;
+test: MDY 2
+	0
+	" 1/2-3" parsedate if false else true ;
+
+test: MDY 3
+	0
+	" 1-2-3" parsedate 0if false else true ;
+test: MY
+	0
+	" 3/2009" parsedate 0if false else
+		Mar 1 2009 gregorian>fixed =
+	then
+	;
+test: MY 2
+	0
+	" 10/7" parsedate 0if false else
+		Oct 1 2007 gregorian>fixed =
+	then
+	;
+
+test: MDYY
+	0
+	" 1/2/33" parsedate 0if false else
+		Jan 2 2033 gregorian>fixed =
+	then
+	;
+test: MDYY 2
+	0
+	" 1/2/63" parsedate 0if false else
+		Jan 2 1963 gregorian>fixed =
+	then
+	;
+test: MDYYYY
+	0
+	" 1/2/2263" parsedate 0if false else
+		Jan 2 2263 gregorian>fixed =
+	then
+	;
+
+test: MY DMY
+	DATEDMY set-date-fmt
+	0
+	" 3/2009" parsedate 0if false else
+		Mar 1 2009 gregorian>fixed =
+	then
+	;
+test: MY 2 DMY
+	0
+	" 10/7" parsedate 0if false else
+		Oct 1 2007 gregorian>fixed =
+	then
+	;
+
+test: MY YMD
+	DATEYMD set-date-fmt
+	0
+	" 2009/3" parsedate 0if false else
+		Mar 1 2009 gregorian>fixed =
+	then
+	;
+test: MY 2 YMD
+	0
+	" 7/10" parsedate 0if false else
+		Oct 1 2007 gregorian>fixed =
+	then
+	;
+| test bye
+[THEN]
+
+|||
+
+def: set-date-fmt
+ctx: ~date
+stack: fmt -- 
+ver: 9.0.6
+desc: =
+	Set the date format for parsing.  Currently may be one of:
+	   DATEMDY
+	   DATEDMY
+	or DATEYMD
+=
+def: set-year-cutoff
+ctx: ~date
+stack: yy -- 
+ver: 9.0.6
+desc: =
+	Set the year which is used as a 'cutoff' point to interpret 2-digit year
+	values.  The default is '40', meaning a value under '40' is interpreted as
+	'2000' plus the year, and '40' and above is '1900' plus the year.
+=
+
+def: parsedate
+ctx: ~date
+stack: a n -- fixed true | a n false
+ver: 9.0.6
+desc: =
+	Attempts to parse the string (a,n) as a date.  If successful, TOS is 'true'
+	and the next value is the 'fixed' date value.  On failure, TOS is 'false'
+	and the original string is returned.
+
+	The default is to assume a format of "MM/DD/YYYY" (where the "/" may also be
+	a "-" or "." character as long as all separators are the same).
+=

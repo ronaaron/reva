@@ -1,0 +1,202 @@
+| vim: ft=reva :
+| binary tree implementations
+
+push~
+needs string/misc
+
+~
+context: ~binarytree
+~binarytree
+
+~priv
+variable node.prev
+variable this.tree
+hex
+defer binarytree-compare ' cmp is binarytree-compare
+
+| a node is four cells:
+|    lstring	key
+|    lstring	value
+|    cell		left
+|    cell		right
+4 cells constant #BTNODE
+: (binarytree-node) ( a n -- a )
+	#BTNODE allocate
+	dup #BTNODE zero
+	>r strdupl r@ !
+	r>
+	;
+
+: node-free ( a -- )
+	dup @ free
+	dup cell+ @ free 
+	free ;
+
+~binarytree
+: >key ( T -- a n ) @ lcount ;
+: >payload ( T -- a n ) cell+ @ lcount ;
+: >left 2cell+ ;
+: >right 3cell+ ;
+
+: left@ >left @ ;
+: right@ >right @ ;
+
+: .node ( t -- )
+	0; 
+	dup  ." node: " .x
+	dup  ." left: " left@ .x
+	dup  ." right: " right@  .x 
+	dup  ." key: " cr >key dump 
+	." payload:" cr >payload dump cr
+	;
+
+defer node.execute
+: inorder ( xt a -- )
+	swap is node.execute
+: (inorder) ( a -- )
+	| don't process NULL nodes!
+	0;
+	| do left node. 
+	| BE AWARE that this can run out of data stack if the tree goes too deep
+	| on the left!
+	dup left@ (inorder)
+	
+	| do this node
+	dup node.execute 0;drop
+
+	| do right node
+	right@ (inorder)
+	;
+
+: .binarytree ( a -- ) { .node true } swap inorder ;
+: binarytree: ( <name> -- )
+	parsews
+: (binarytree) ( a n -- )
+	(create)
+		['] cmp ,		| compare routine
+		0 ,				| actual tree
+	does>
+		lcount is binarytree-compare
+		| points to first node of tree
+	;
+
+: cmpnode ( a n t -- a n t f )
+	3dup >key binarytree-compare ;
+: get ( a n t -- b )
+	dup node.prev !
+	>key 2over 
+	binarytree-compare
+	| a n flag
+	dup 0if 2drop node.prev @ ;then
+	| a n flag
+	node.prev @ swap
+	0 >if left@ else right@ then
+	| a n t'
+	dup 0if 3drop 0 ;then
+	| try the next node:
+	get
+	;
+
+: parent>lr ( node -- node plr isleft? )
+	node.prev @  2dup 		| n p n p
+	left@ 
+	| n p f	
+	." p>lr "
+	.s cr
+	=if >left true else >right false then ;
+: zero-del ( node l r -- )
+	." zero del" .s cr
+	| no children: zero parent's pointer to us
+	2drop
+	| see if we're the root:
+	node.prev @ 0if
+	." root" cr
+		| yes, so just delete this node from the tree
+		0 this.tree xchg node-free
+	;then
+	| node
+	parent>lr 
+	| node plr isleft?
+	.s cr
+	drop 
+	off 
+	.s cr
+	node-free ;
+: one-del ( n l r -- )
+	." one del" .s cr
+	| get the left or right child as appropriate:
+	dup if nip else drop then
+
+	| n c
+	over parent>lr if >left else >right then
+	| n c p'
+	! node-free
+	;
+: pick-lr ( l r -- lr )
+	2dup xor abs 100 mod 51 <if drop else nip then ;
+: two-del ( n l r -- )
+	." two del" .s cr
+	pick-lr			| n lr
+	| n c
+	over parent>lr if >left else >right then
+	| n c p'
+	! node-free
+	;
+: del ( a n t -- )
+	dup this.tree !
+	get 0;
+
+	." del: " .s cr
+	." prev: " node.prev .
+	." tree: " this.tree @ . cr
+	dup left@ over right@
+	| node left right
+	2dup or 0if
+		zero-del
+	;then
+	| node left right
+	2dup and 0if one-del else two-del then ;
+
+: put ( b m a n t -- )
+	dup @ 0if
+		>r
+		strdupl r@ !
+		strdupl r> cell+ !
+	;then
+	>r 2dup r>
+	get			| b m a n t'
+	?dup if
+		| matching node!
+		dup >r
+		>payload free 
+		2drop
+		strdupl r> cell+ !
+	;then
+
+	| no matching node.  create a new node
+	(binarytree-node) >r
+	strdupl r@ cell+ !
+
+	| fix left and right and parent nodes:
+	node.prev @ | dup r@ 4cell+ !
+
+	| determine if this node is left or right of the parent:
+	node.prev @ >key
+	r@ >key cmp
+	0 >if
+		| left node
+		node.prev @
+		dup
+		left@ r@ >left !
+		r@ node.prev @ >left !
+	else
+		| right node
+		node.prev @
+		dup
+		right@ r@ >right !
+		r@ node.prev @ >right !
+	then
+	rdrop
+	;
+
+pop~

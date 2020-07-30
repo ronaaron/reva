@@ -1,0 +1,332 @@
+| XML-RPC library
+| vim: ft=reva :
+| see: http://www.xmlrpc.com/spec
+
+
+| Example header:
+| POST /RPC2 HTTP/1.0
+| User-Agent: Frontier/5.1.2 (WinNT)
+| Host: betty.userland.com
+| Content-Type: text/xml
+| Content-length: 181
+
+| Content:
+| <?xml version="1.0"?>
+| <methodCall>
+|   <methodName>examples.getStateName</methodName>
+|   <params>
+|      <param>
+|         <value><i4>41</i4></value>
+|      </param>
+|   </params>
+| </methodCall>
+
+| Scalar values:
+|  <i4> or <int>			-12
+|  <boolean>				1
+|  <string>					hello world
+|  <double>					-12.214
+|  <datetime.iso8601>		20080102T14:08:55
+|  <base64>					e9234...
+|
+| or a struct:
+| <struct>
+|   <member>
+|		<name>x</name>
+|		<value><i4>34</i4></value>
+|	</member>
+|	...
+| </struct>
+|
+| or an array:
+|
+| <array>
+|	<data>
+|		<value><i4>12</i4></value>
+|		<value><string>Egypt</string></value>
+|	</data>
+| </array>
+|
+| Response format:
+|
+| HTTP/1.1 200 OK
+| Connection: close
+| Content-Length: 158
+| Content-Type: text/xml
+| Date: Fri, 17 Jul 1998 19:55:08 GMT
+| Server: UserLand Frontier/5.1.2-WinNT
+| 
+| <?xml version="1.0"?> 
+| <methodResponse> 
+| 	<params> 
+| 		<param> 
+| 			<value><string>South Dakota</string></value>
+| 		</param> 
+| 	</params> 
+| </methodResponse> 
+|
+| Fault response:
+| HTTP/1.1 200 OK
+| Connection: close
+| Content-Length: 426
+| Content-Type: text/xml
+| Date: Fri, 17 Jul 1998 19:55:02 GMT
+| Server: UserLand Frontier/5.1.2-WinNT
+| 
+| <?xml version="1.0"?> 
+| <methodResponse> 
+|	<fault> 
+|		<value> 
+|			<struct> 
+|				<member> 
+|					<name>faultCode</name> 
+|					<value><int>4</int></value> 
+|				</member> 
+|				<member> 
+|					<name>faultString</name> 
+|					<value><string>Too many parameters.</string></value> 
+|				</member> 
+|			</struct> 
+|		</value> 
+|	</fault> 
+| </methodResponse> 
+
+push~
+reva
+needs net/sockets
+needs net/xml
+needs string/xmlparse
+needs string/dynamic
+~sockets
+~util
+~xml
+
+0 value callbuffer
+0 value resultbuf
+0 value cbSizeOffs
+0 value contentSize
+
+: +content  ( a n -- ) dup +to contentSize	| fall through...
+: +buffer callbuffer +dplace ;
+: nl crlf +content ;
+
+: (tag) +content +content " >" +content ;
+: <tag> ( a n -- ) " <" (tag) ;
+: </tag> ( a n -- ) " </" (tag) ;
+: tag ( a n a' n' -- a'' n'' )
+	2swap 2over <tag> 
+	+content
+	</tag> nl
+	;
+
+: param[ " param" <tag> " value" <tag> ;
+: ]param " value" </tag> " param" </tag> ;
+
+: intval ( n -- ) param[ (.) " i4" tag ]param ;
+: strval ( a n -- ) 
+	~xml.escape 
+	tuck
+	param[ " string" 
+	tag ]param 
+	drop
+	;
+: method ( a n -- ) 
+	" methodCall" <tag> nl
+	" methodName" tag
+	" params" <tag> 
+	;
+
+create xmlserver 256 allot
+create xmlpath 256 allot
+0 value xmlport
+
+: splituri ( uri,n -- )
+	xmlserver off   xmlpath off    80 to xmlport
+	': split if
+		2swap | server,n PORT/PATH
+		'/ split if
+			>single drop to xmlport
+			xmlpath place
+		then
+	else
+		| no port designation
+		| SERVER/PATH
+		'/ split if
+			2swap xmlpath place
+		then
+	then
+	xmlserver place
+	;
+
+| note: the ^M characters are required in the string:
+: xmlrpc[ ( method,n uri,n -- )
+	| split out server, path and port:
+	| server.company.com:234/RPC
+	| -> server 'server.company.com'
+	| -> path '/RPC'
+	| -> port '234'  (default to 80 if not present)
+	splituri
+	
+	0 to cbSizeOffs 0 to contentSize 
+	callbuffer 0if 5000 dstr to callbuffer then 
+	callbuffer dclear drop
+	
+	" POST /" callbuffer dplace
+	xmlpath count  +buffer
+	quote *
+ HTTP/1.0
+User-Agent: Reva net/xmlrpc
+Host: *
+	+buffer
+	xmlserver count +buffer
+	quote * 
+Content-Type: text/xml
+Content-length: *
+	+buffer
+	callbuffer dcount + 1+ to cbSizeOffs
+
+	quote *            
+
+*	+buffer
+
+quote * <?xml version="1.0"?>
+*
+	+content 
+	method
+	;
+
+
+: rpcexec ( -- result,n )
+	resultbuf 0if 5000 dstr to resultbuf then
+	resultbuf dclear drop
+
+	xmlserver count xmlport connectsocket dup  >r
+	-1 =if rdrop THROW_GENERIC ;then 
+	r@ callbuffer dcount 0 send 
+
+	r@ { resultbuf +dplace } recvall
+
+	r> closesocket
+	resultbuf dcount 
+	;
+
+: ]xmlrpc ( -- )
+	" params" </tag> nl
+	" methodCall" </tag> nl
+	contentSize (.) cbSizeOffs swap move
+	rpcexec
+	;
+
+variable parse-result-code
+variable fault_code
+create faultstring 256 allot
+
+defer int 
+defer string 
+
+
+| items are on stack; we need to differentiate:
+| TODO
+
+
+0 value parser
+variable isFault
+variable isValue
+variable isNumber
+1000 stack: xml-parse-stack
+
+: process-fault ( a n -- ) ;
+: start
+	drop zcount
+	isFault @ if process-fault else
+		case 
+			" fault" strof isFault ++ endof 
+			" value" strof isValue ++ endof
+			" i4" strof isNumber ++ endof
+			" int" strof isNumber ++ endof
+		endcase
+	then
+	;
+: end ;
+: char
+	isFault @ if else
+		isValue @ if
+			isValue --
+			| are we dealing with a number or an integer?	
+			isNumber @ if
+				'N emit
+				isNumber --
+				>single 0if 2drop 0 then
+				xml-parse-stack push
+			else
+				'S emit
+				dup cell+ 1+ allocate dup >r
+				lplace
+				r> xml-parse-stack push
+			then
+		then
+	then
+	;
+: xml-bad " Bad Parse" false ;
+: parse-result ( a n -- a n 0 | aN ... a2 a1 N -1 )
+	isFault off isNumber off isValue off
+	xml-new-parser to parser
+	['] start ['] end ['] char parser xml-sethandlers
+	parser -rot xml-parse if
+		| parsed the xml ok
+		| take the items from the aux stack and transfer them over:
+		xml-parse-stack stack-size dup >r
+		if 
+			| do a loop
+			0do
+				xml-parse-stack pop
+			loop
+			r> true
+		else
+			| nothing on the parse stack...
+			rdrop xml-bad
+		then
+	else
+		| failed parsing the xml
+		xml-bad 
+	then
+	parser xml-free-parser
+	0 to parser
+	;
+pop~
+
+[IFTEST]
+~strings
+~xml
+test: call geocode 
+	" geocode"
+	" rpc.geocoder.us/service/xmlrpc"
+	xmlrpc[ 
+		" 1005 Gravenstein Hwy, Sebastopol, CA 95472" strval
+	]xmlrpc 
+	100 > ;
+[THEN]
+
+|||
+
+def: xmlrpc[
+stack: a1 n1 a2 n2 --
+ctx: ~xml
+desc: *
+	Sets up to call the method (a1,n1) at the URI (a2,n2) using XMLRPC.
+	Subsequent strings are the XMLRPC parameters.  The "]xmlrpc" word makes the
+	actual network call.
+*
+
+def: ]xmlrpc
+stack: - a n
+ctx: ~xml
+desc: *
+	Calls the method and URI set by the "xmlrpc[" word, passing the subsequent
+	strings as parameters to the call.  
+
+	The XML result is returned in the string (a,n)
+*
+
+
+related: xmlrpc[ ]xmlrpc

@@ -1,0 +1,193 @@
+| vim: ft=reva :
+| dynamic array of 'cell' sized items (usually pointers)
+
+push~
+~
+context: ~parray
+
+~priv
+: parray[n] ( n a  ) swap cells + ;
+~parray
+
+: >size ( a -- n ) cell+ ;
+: >len ( a -- n )  2cell+ ;
+
+: .parray ( a -- )
+	cr ." parray at " dup .x
+	." size: " dup >size ?  ." len: " dup >len ? cr
+	| a
+	dup @ swap >size @ cells dump cr
+	;
+
+| 0 = array; 1 = size 2 = len
+: parray: ( n <name> -- )
+	create
+		dup cells allocate	| n a
+		, , 0 ,
+	does> ;
+
+: put ( m n a -- )
+	dup >size @ third				| m n olda size n
+	> not if
+		over			| m n olda n (from here ignore 'm n')
+		2* dup			| olda nsz nsz
+		third @ swap cells	| olda nsz olda' nsz'
+		resize			| olda nsz newa
+		third !
+		over >size !
+	then
+	2dup >len @					| m n a n N
+	1- max 1+ over >len !
+
+	@ parray[n] !
+	;
+
+: get ( n a -- m )
+	tuck	| a n a
+	>size @ clamp	| a n'
+	swap @ parray[n] @ ;
+
+: iter ( xt a -- )
+	dup @ swap >len @ 				| xt a' n
+	0do lcount third execute loop 2drop ;
+
+: append ( m a -- ) dup >len @ swap put ;
+: clear  ( a -- ) >len off ;
+
+[IFTEST]
+~parray
+
+10 parray: blah
+
+41 test2: add 5 items
+	6 0do i 10 * 1+ i blah put loop
+	4 blah get  ;
+
+6 test2: iterate the array
+	temp off
+	{ drop temp ++ } blah iter 
+	temp @  ;
+
+1234 test2: overwrite an item
+	1234 1 blah put
+	1 blah get ;
+
+2345 test2: extend the array
+	2345 15 blah put
+	15 blah get ;
+
+6789 test2: append
+	1234 blah append
+	6789 blah append
+	blah >len @ 1- blah get  ;
+
+20 parray: xxx
+
+123 test2: append2
+	123 xxx append
+	0 xxx get ;
+	
+234 test2: append3
+	234 xxx append
+	1 xxx get ;
+
+5 parray: yyy
+500 test2: really extend
+	1000 0do
+		i i yyy put
+	loop 
+	500 yyy get ;
+
+test: clear
+	xxx clear
+	xxx >len @ 0 not ;
+
+[THEN]
+
+pop~
+
+|||
+
+def: parray:
+stack: n <name> -- 
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Create a dynamic array of pointers called "<name>", with an initial
+	allocated size of "n" items.
+	=
+
+def: get
+stack: n A -- M
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Get item A[n]
+	=
+
+def: put
+stack: M n A -- 
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Set item A[n] to M.  If "n" is beyond the upper limit of A, the limit will
+	be extended and the array memory reallocated.
+	=
+
+def: iter
+stack: xt A -- 
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Execute "xt" for each element in the array 'A'.  The stack
+	diagram for the xt is ( curr -- )
+
+	"curr" is the current entry.  The xt must consume the data.
+	=
+
+def: clear
+stack: a -- 
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Sets the number of elements in the array 'a' to zero.
+	=
+
+def: .parray
+stack: a -- 
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Print the contents of the array 'a' in a reasonable manner
+	=
+
+def: >len
+stack: a -- a'
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Return the variable containing the current 'length' of the 
+	array.  The length in this context means the maximum index used to
+	put an element in the array.
+	=
+
+def: >size
+stack: a -- a'
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Return the variable containing the current 'size' of the 
+	array.  The size in this context means the size (in cells) of the
+	allocated space for the array.  It will be at least as big as the
+	'length'.
+	=
+
+def: append
+stack: m a --
+ctx: ~parray
+ver: 2011.2
+desc: =
+	Appends the value 'm' to the array 'a'.
+	=
+
+related: parray: get put iter clear .parray >size >len append

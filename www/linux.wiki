@@ -1,0 +1,13 @@
+<title>Linux Issues</title>
+
+<h1 align='center'>Running Reva on Linux</h1>
+<center>(For Mac issues, [./mac.wiki|go here])</center>
+
+Reva is mostly developed on Linux, so in general you can assume that it runs correctly.  However, there are a few issues one should know.
+
+There are two environment variables which should be set: "PATH" and "LD_LIBRARY_PATH".  You should set the 'bin' directory of your Reva distribution to be in both the PATH and in LD_LIBRARY_PATH.  Note that you do <b>not</b> have to update the PATH if you don't want to, though it will make things more convenient.  But if you don't update the LD variable, then none of the included .so files will be found at runtime, which will severely limit your Reva experience.
+
+Besides this, you probably will want to create two symbolic links: 'reva' to point to your 'bin/lin/reva', and 'build' to point to 'bin/lin/build'.  As with PATH, both of these changes are optional.
+
+<h2>Other issues</h2>
+If you have a system without a functioning "/proc" file system (please report this to us!) or if you are running selinux and have the "/proc" system made inaccessible -- then you <b>must</b> set the PATH environment variable to point to your Reva binary, or you have to specify the full path of the Reva binary when you run it.  The reason for this is that Reva needs to know where it was started from in order to find its support files, and it requires access to "/proc" to figure this out.

@@ -1,0 +1,182 @@
+| vim: ft=reva: 
+| utilities to manage verification, application and tracking of patches
+
+push~
+needs db/common
+needs crypt/rc4
+~db ~
+context: ~patchmgr
+~priv
+~patchmgr
+variable patch-then-quit
+variable patch-then-save
+
+~priv
+$50766552 constant PATCHSIG
+variable fh
+: writeTOS sp 4 fh @ write drop ;
+create patch-file-name " 1234567812345678.fp" asciiz,
+create patch-sql 50 allot
+: hex08 ( n -- a n ) base @ >r hex 8 '0 (p.r) r> base ! ;
+: make-patch-file-name ( x y -- )
+	hex08 patch-file-name 1+ swap move
+	hex08 patch-file-name 9 + swap move ;
+
+: ensure-patch-table ( db -- )
+	" create table if not exists patches ( id TEXT, applied DATE );"
+	sql_exec ;
+
+: patch-applied! ( db -- )
+	" insert into patches values ('" patch-sql lplace
+	patch-file-name count patch-sql +lplace
+	" ',datetime('now'));" patch-sql +lplace
+	patch-sql lcount sql_exec
+	;
+: patch-applied? ( db a n -- f )
+	| early out if too little data given:
+	5 cells <if 2drop false ;then
+	| parse out patch file name:
+	2cell+ dup @ swap cell+ @ swap make-patch-file-name
+	| db
+	dup ensure-patch-table
+	" select id from patches where id='"
+		patch-sql place
+		patch-file-name count patch-sql +place
+		" ';" patch-sql +place
+	patch-sql count 
+	sql_fetch$ nip 0 <> ;
+
+: verify-patch ( a n -- a n f )
+	swap	| n a
+	lcount PATCHSIG <>if drop swap false ;then
+	lcount dup allocate >r >r	| r:lzsize r:allocatedbuf
+	lcount swap
+	lcount swap			| n cH pH a'
+	fourth 4 cells -	| n cH pH a' n'
+	2dup fnvhash -rot	| n cH pH cH' a' n'
+	patch-file-name count rc4setup
+	2dup rc4
+	drop r> r> 
+	lz>	| n cH pH cH' b m
+	2dup fnvhash -rot	|  n cH pH cH' pH' b m
+
+	| save uncompressed info:
+	>r >r
+	| compare sigs:
+	rot =				| n cH cH' f
+	-rot = and nip		| f
+	r> r> rot
+	;
+
+: do-apply-patch ( db a n -- f )
+	rot >r
+	verify-patch 0if rdrop 2drop false ;then
+	over >r
+	eval 
+	r> free
+	r> patch-applied! true
+	patch-then-save @ if
+		patch-then-save @ count makeexename (save)
+	then
+	patch-then-quit @ if
+		bye
+	then
+	;
+: apply-patch ( db a n -- f )
+	3dup patch-applied? 0if
+		| not applied yet, so apply it
+		do-apply-patch
+	else
+		3drop true
+	then
+	;
+
+exit~
+
+: apply-patch-file ( db a n -- f )
+	patch-then-quit off
+	patch-then-save off
+	slurp dup 0if 3drop false ;then
+	over >r
+	apply-patch
+	r> free
+	;
+: create-patch-file ( a n -- a n )
+	2dup fnvhash -rot			| db h1 a n
+	dup temp !
+	dup lzmax allocate			| db h1 a n a'
+	>lz							| db h1 a' m
+	| the actual data:  db a' m
+	patch-file-name count rc4setup
+	2dup rc4
+	2dup fnvhash -rot			| db h1 h2 a' m
+	2swap 2dup make-patch-file-name	| db a' m h1 h2
+	patch-file-name count creat fh !
+	PATCHSIG writeTOS 
+	temp @ writeTOS
+	writeTOS writeTOS
+	_dup fh @ write
+	| clean up:
+	free fh @ close
+	| return the name to the caller:
+	patch-file-name count
+	;
+exit~
+
+pop~
+
+|||
+
+def: patch-then-quit
+ver: 2011.1
+stack:  -- 
+ctx: ~patchmgr
+desc: =
+	If this variable is set, the patch manager will quit the application after
+	the patch has been applied
+=
+
+def: patch-then-save
+ver: 2011.1
+stack:  -- 
+ctx: ~patchmgr
+desc: =
+	If this variable is set, the patch manager will save the application to the
+	application name which the cstring variable points to.
+=
+
+def: apply-patch-file
+ver: 2011.1
+stack:  db a n -- f
+ctx: ~patchmgr
+desc: =
+	Applies the patch which is in the file "(a,n)".  First checks to see if the
+	patch has been applied, by querying the open database "db".  
+
+	A "patch file" must be in the format created by "create-patch-file".  It is
+	compressed and encrypted, and has checksum information to make it slightly
+	difficult to hack, as well as to make it somewhat more secure.
+
+	NOTE: if you need real security for your patches, you *must* use something
+	like GPG signatures and verify the patch separately.  This library is not
+	that paranoid, but should be good enough for common purposes.
+
+	A patch will not be applied if it has already been applied, but that is not
+	an error.  Return results are "true" if there was no problem, or "false" if
+	the patch failed verification.
+=
+
+def: create-patch-file
+ver: 2011.1
+stack:  a n -- b m
+ctx: ~patchmgr
+desc: =
+	Transform the string (a,n) into a correctly-formatted patch file.  Returns
+	the name of the patch file in the string (b,m).
+
+	Does not make any attempt to verify the contents of the input (a,n), but
+	just compresses, encrypts, and writes some housekeeping information to the
+	patch file.
+=
+
+related: create-patch-file apply-patch-file  patch-then-quit patch-then-save

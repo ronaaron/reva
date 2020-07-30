@@ -1,0 +1,1200 @@
+﻿<h1 align="center">Reva Forth Tutorial</h1>
+<center>Getting your feet wet, while keeping your head above water...</center>
+
+<h1>Introduction</h1>
+Reva is a derivative of [http://www.retroforth.org/|RetroForth], and is
+not -- nor is it intended to be -- ANS Forth compliant.  This tutorial is
+based on the one by [http://www.softsynth.com/philburk.html|Phil Burk], the
+author of [http://www.softsynth.com|pForth], but has been substantially
+altered in order to reflect Reva rather than pForth or any other Forth.
+The most recent stable version of Reva [Stable|is here].
+
+The intent of this tutorial is to provide a series of experiments which will
+introduce you to the major concepts of Forth as implemented in Reva. It is
+only a starting point. Feel free to deviate from the sequences provided. A
+free form investigation based on your curiosity is probably the best
+way to learn any language.  Forth is especially well adapted to this type of
+learning.  If you are only interested in learning [http://www.forth.com|ANS
+Forth], there are other tutorials which will serve your purpose better.
+
+In the tutorials, I will print the things you need to type in <tt>monospaced
+font</tt>, and indent them. Reva is case-sensitive, unlike some other
+Forths; so the words which are built-in must be entered as shown, but words
+you create can be any combination of case you prefer.  
+
+At the end of each line, press the <tt>RETURN</tt> (or <tt>ENTER</tt>) key;
+this causes Reva to interpret what you've entered.  You might also note
+that Reva prompts you with <tt>ok&gt;</tt> as other Forths do, when it is
+awaiting input from you.
+
+<h1>Forth Syntax</h1>
+Forth has the simplest syntax of any computer language.  What minimal syntax
+it has can be summarized as follows: "Forth code is a bunch of words with
+spaces between them." This is even simpler than English! Each <i>word</i> is
+equivalent to a function or subroutine in a language like 'C'. "Words" are
+executed in the order they appear in the code. The following statement, for
+example, could appear in a Forth program:
+
+<tt><b> WAKE_UP EAT_BREAKFAST WORK EAT_DINNER PLAY SLEEP</b></tt>
+
+Notice that <i>WAKE_UP</i> has a dash between the <i>WAKE</i> and <i>UP</i>. The dash
+has no particular meaning to the Forth compiler. I simply used a dash to
+connect the two words together to make one word, and to make that word easier
+for a human to read. Forth word's names can use any combination of letters,
+numbers, or punctuation. <i>Note:</i> In Reva, "dot" <i>may</i> have a special
+meaning.  See [Contexts] for more information.  In general, however, any
+character but space may be used to name words. We will encounter words with
+names like:
+
+<tt><b>  ." #s swap ! @ dup . *</b></tt>
+
+These are all called <i>words</i>. The word <tt>$%%-GL7OP</tt> is also a legal
+Forth name, although probably not a very good one. It is up to the programmer
+to name words in a sensible manner.  In general, Forth (and Reva in
+particular) give the programmer ultimate freedom to make whatever design
+decisions are appropriate, and does not get in the way of making bad
+decisions. Don't worry though: if you enter a word that Reva doesn't recognize
+like $%%-GL7OP Reva will respond $%%-GL7OP? which is its rather terse way of
+telling you that it has no idea what you mean.
+
+Essentially, the Forth interpreter simply grabs the next word in its input,
+and looks it up in the [Dictionary|dictionary]. If it finds the word there, it executes
+it; if it doesn't, it tries to interpret it as a number given the current
+numeric base (and some other rules we'll see later).  If it still is unable to
+understand the word, it complains as mentioned before (after giving the user
+programmatic control first).
+
+Note that a word may take over the parsing of the rest of the input. For
+instance, as you will see below, colon, <b>:</b> , starts to compile the text
+following it into a new entry in the dictionary until it encounters a
+semicolon, <b>;</b> .  There are many such <i>parsing words</i>, though most words
+in Reva simply process input and generate output.
+
+Now it is time to start Reva and begin experimenting.  One of Forth's 
+greatest strengths is its interactive, immediate nature.
+
+<h2>Stack Manipulation</h2>
+The Forth language is based on the concept of a <i>stack</i>. Imagine a
+stack of blocks with numbers on them. You can add or remove numbers from
+the top of the stack. You can also rearrange the order of the numbers.
+Forth uses several stacks. The <i>data stack</i> is the one used for passing
+data between Forth words so we will concentrate our attention there. The
+<i>return stack</i> is another Forth stack that is primarily for internal
+system use but is often used to store temporary values. In this tutorial, when 
+we refer to the "stack," we will be referring to the <i>data stack</i>.  For 
+reference, we'll call the <i>return stack</i> "RS".
+
+The stack is initially empty. Start up Reva, and notice you are 
+greeted by something like:
+
+ Reva a.b.c Windows
+ 
+ ok>
+
+The interpreter is now awaiting your command.  Let's start by putting some 
+numbers on the stack.  Type in:
+
+ 23 7 9182
+
+Excellent!  Now print the number on top of the stack using the Forth word 
+<b>.</b>, which is pronounced "dot". This is a hard word to write 
+about in a manual because it is just a single period.
+
+Enter: 
+
+ <b>.</b>
+
+You should see the last number you entered, <b>9182</b>, printed.
+Reva  has a very handy word for showing you what's on the stack.
+It is <b>.s</b> , which is pronounced "dot ess". The name was constructed from "dot" for
+print, and "s" for stack.  In Reva, <tt>.s</tt> is defined to show only the topmost ten stack 
+items, but the actual number of stack items is given in brackets.
+
+Try entering:
+
+ <b>.s</b>
+
+you will see your numbers <b>23 7</b>, in a list. The number at the far right is the
+one on top of the stack.
+Notice that <b>9182</b> is not on the stack. The word  <b>.</b> removed
+the number on top of the stack before printing it. In contrast, <b>.s</b>
+leaves the stack untouched.
+
+Forth uses the stack to hold data being operated on, and to 
+pass data between words.  Essentially, a word takes whatever it needs from 
+the stack, and puts whatever it wants on the stack.  This is a very 
+powerful aspect of Forth, but one which requires practice to understand.  It 
+also means that documenting what each word does to the stack (called [stack effect]) is important and useful.
+
+
+In the examples that follow, you do not need to type in the comments. When you
+are programming, of course, liberal use of comments and stack diagrams may
+make your code more readable and maintainable.  Besides the parenthesis, you
+may use the vertical-bar character <b>|</b> as comment to end-of-line.  In
+other words, anything after the <b>|</b> on that line is ignored:
+
+ dup swap <font color=green>| This is all a comment</font>
+
+Between examples, you may wish to clear the stack. If you
+enter <b>reset</b>, the stack will be cleared.
+Since the stack is central to Forth, it is important to be able to alter
+it easily. Let's look at some more words that manipulate the stack.
+Enter:
+
+ 777 dup .s
+
+You will notice that there are two copies of 777 on the stack. The word
+<b>dup</b> duplicates TOS. This is useful when you want to use the TOS and
+still have a copy. The stack diagram for DUP would be:
+
+ dup ( n -- n n )
+
+Another useful word is <b>swap</b>. Enter:
+
+ 23 7 .s
+ swap .s
+
+The stack should look like: <b>7 23</b> now.  The stack diagram for swap would be:
+
+ swap ( a b -- b a )
+
+Now enter:
+ over .s
+
+You should see <b>23 7 23</b> . The word <b>over</b> causes a copy of the 
+second item on the stack to leapfrog over the first. Its stack diagram would be:
+
+ over ( a b -- a b a )
+
+Here is another commonly used Forth word:
+
+ drop ( a -- )
+
+Can you guess what we will see if we enter:
+  drop .s
+
+Another handy word for manipulating the stack is <b>rot</b>. Enter:
+
+ 11 22 33 44 .s
+ rot .s
+
+The stack diagram for <b>rot</b> is, therefore:
+
+ rot ( a b c -- b c a )
+
+You have now learned the more important stack manipulation words. You
+will see these in almost every Forth program. I should caution you that
+if you see too many stack manipulation words being used in your code then
+you may want to reexamine and perhaps reorganize your code. You will often
+find that you can avoid excessive stack manipulations by using <i>variables</i>, which 
+will be discussed later.  It is also likely that <i>factoring</i> your code -- that is, 
+breaking it into smaller words -- may help reduce the stack juggling.
+
+To get any arbitrary item on the stack, use <b>pick</b>
+. Try entering:
+
+ 14 13 12 11 10
+ 3 pick . ( prints 13 )
+ 0 pick . ( prints 10 )
+ 4 pick . ( prints 14 )
+
+<b>pick</b> makes a copy of the Nth item on the stack. The numbering starts with
+zero, therefore <b>0 pick</b> is equivalent to <b>dup</b>, and <b>1 pick</b> is equivalent 
+to <b>over</b>.  
+
+<b>pick</b>s stack diagram looks like this:
+
+  pick ( ... v3 v2 v1 v0 N -- ... v3 v2 v1 v0 vN )
+
+I have included the stack diagrams for some other useful stack manipulation
+words. Try experimenting with them by putting numbers on the stack and
+calling them to get a feel for what they do. Again, the text in parentheses
+is just a comment and need not be entered.
+
+
+{|
+|2drop||{ a b c -- a )
+|-
+|2dup||( a b -- a b a b )
+|-
+|2swap||( a b c d -- c d a b )
+|-
+|2over||( a b c d -- a b c d a b )
+|-
+|nip||( a b c --  a c )
+|-
+|tuck||( a b -- b a b )
+|-
+|-rot||( a b c -- c a b )
+|}
+
+<h3>Problems</h3>
+Start each problem by entering:
+
+ reset 11 22 33
+
+Then use the stack manipulation words you have learned to end up with the
+following numbers on the stack:
+
+* 11 33 22 22
+* 22 33
+* 22 33 11 11 22
+* 11 33 22 33 11
+* 33 11 22 11 22
+
+(Answers can be found at the [#answers|end of this tutorial].)
+
+<h2>Arithmetic</h2>
+Simply moving numbers around on a stack can be a lot of fun.
+Eventually, however, you'll want to do something useful with them. This
+section describes how to perform arithmetic operations in Forth.
+
+The first thing you should know is that Reva can be extended to recognize
+many kinds of numbers, but recognizes two kinds of numbers already: "single"
+and "double" .  A "single" is any value that can fit in the native "cell"
+size, which is 32 bits.  In other words, a "single" can be any value from 0
+through 2<sup>32</sup>, or about 4 billion.  A "double" can be any value from
+0 through 2<sup>64</sup> or about 1.8e19 - a really huge number.
+
+The second thing you should know is that Reva doesn't do any kind of
+verification on your behalf.  If you use a "double" math word when there is
+only a "single" on the stack, you will not get a result with which you would
+be happy.  To get a double you can put a 'L' as the last character in the
+value, or you can use the word <b>s&gt;d</b> to convert a single to a double.
+You will need the 'doubles' library to do double-cell math, since it is not
+part of Reva to begin with.  
+
+The third thing you should know is that Reva doesn't care about
+signedness.  In other words, treating the value on the stack as "-1" rather
+than "4294967295" depends on the word you apply to it; the value itself has no
+intrinsic value to Reva.  This also means that a "character" can be dealt
+with as a number (the ASCII code corresponding to the character) without doing
+any 'conversion' on the value first.  This is a strong point of Forth (and
+Reva) but it also puts the onus for "doing the right thing" on the
+programmer.
+
+The fourth thing you should know is that Reva has strict ideas on what
+constitutes a number, and those ideas are different from ANS Forth.  Any
+string of digits (valid in the current "base") will be interpreted as a
+postive "single".  If a minus sign ("-") precedes the number, it will be
+interpreted as negative.  If a capital "L" is the last character in the
+number, it will be interpreted as a "double".  No punctuation is permitted
+inside a "single" or "double" (but a period is <i>required</i> inside a
+"[float]", which we will not cover here).
+
+From here on, we'll assume all "numbers" are "single" values.  Some of the
+single-math words have double equivalents, but not all of them do.
+
+Forth arithmetic operators work on the numbers currently on top
+of the stack. If you want to add the top two numbers together, use the
+Forth word <b>+</b> , pronounced "plus". Enter:
+
+ 2 3 + .
+ 2 3 + 10 + .
+
+This style of expressing arithmetic operations is called 
+<i>Reverse Polish Notation</i>, or <i>RPN</i>. It will already be familiar to those
+of you with HP calculators. In the following examples, I have put the
+algebraic equivalent representation in a comment.
+
+Some other arithmetic operators are <b>- * /</b> . Enter:
+
+ 30 5 - .     | 25 = 30 - 5 
+ 30 5 / .     | 6 = 30 / 5 
+ 30 5 * .     | 150 = 30 * 5 
+ 30 5 + 7 / . | 5 = (30 + 5) / 7 
+
+An important fact to keep in mind is that when you are doing division
+with integers using <b>/</b> , the remainder is lost. Enter:
+
+ 15 5 / .
+ 17 5 / .
+
+This is true in all languages on all computers. Later we will examine <b>/mod</b>
+and <b>mod</b> which do give the remainder.
+
+<h2>Defining a New Word</h2>
+
+It's now time to write a <i>small program</i> in Forth. You can do this
+by defining a new word that is a combination of words we have already learned.
+Let's define and test a new word that takes the average of two numbers.
+
+We will make use of two new words, <b>:</b> ( "colon"), and <b>;</b> (
+"semicolon") . These words start and end a typical <i>Forth definition</i>.
+Enter:
+
+ : AVERAGE ( a b -- avg ) + 2 / ;
+
+Congratulations! You have just written a Forth program. Let's look more
+closely at what just happened. The colon told Forth to add a new word to
+its list of words. This list is called the <i>dictionary</i>. The name of
+the new word will be whatever name follows the colon. Any Forth words entered
+after the name will be compiled into the new word. This continues until
+the semicolon is reached, which finishes the definition.
+
+Let's test this new word by entering:
+
+ 10 20 AVERAGE . ( should print 15 )
+
+Once a word has been defined, it can be used to define more words. Let's
+write a word that tests our word.. Enter:
+
+ : TEST ( --) 50 60 AVERAGE . ;
+
+Try combining some of the words you have learned into new Forth definitions
+of your choice. If you promise not to be overwhelmed, you can get a list
+of the words that are available for programming by entering:
+
+ words
+
+Don't worry, only a small fraction of these will be used directly in your
+programs.  As an enhancement, you can type some text after <b>words</b> and only
+those words which contain that text in their name, will be printed:
+
+ words dup
+
+Will print something like 
+
+ 3dup ?dup dup 2dup
+ 4 words
+
+<h2>More Arithmetic</h2>
+
+When you need to know the remainder of a divide operation. <b>/mod</b> will return
+the remainder as well as the quotient, whereas <b>mod</b> will only return the
+remainder. Enter:
+<UL>
+<pre>
+53 10 /mod .s
+7 5 mod .s
+</pre>
+</UL>
+Two other handy words are <b>min</b> and <b>max</b> . They accept two numbers
+and return the MINimum or MAXimum value respectively. Try entering the
+following:
+<UL>
+<pre>
+56 34 max .
+56 34 min .
+-17 0 min .
+</pre>
+</UL>
+Some other useful words are:
+
+<table>
+<tr><td class=c>abs</td><td class=c>( a -- abs(a) )</td></tr>
+<tr><td class=c>negate</td><td class=c>( a -- -a )</td></tr>
+<tr><td class=c>invert</td><td class=c>( a -- ~a )</td><td>Invert each bit</td></tr>
+<tr><td class=c>&lt;&lt;</td><td class=c>( a n -- (a&lt;&lt;n) )</td></tr>
+<tr><td class=c>&gt;&gt;</td><td class=c>( a n -- (a&gt;&gt;n) )</td></tr>
+</table>
+
+
+<h2>Arithmetic Overflow</h2>
+
+If you are having problems with your calculation overflowing the 32-bit
+precision of the stack, then you can use <b>*/</b> . This produces an intermediate
+result that is 64 bits long. Try the following three methods of doing the
+same calculation. Only the one using */ will yield the correct answer,
+<b>5197799</b>.
+<UL>
+<pre>
+34867312 99154 * 665134 / .
+34867312 665134 / 99154 * .
+34867312 99154 665134 */ .
+</pre>
+</UL>
+
+<h2>Convert Algebraic Expressions to Forth</h2>
+
+How do we express complex algebraic expressions in Forth? For example:
+<tt>20 + (3 * 4)</tt>?
+
+<P>To convert this to Forth you must order the operations in the order
+of evaluation. In Forth, therefore, this would look like:
+<UL>
+<pre>
+3 4 * 20 +
+</pre>
+</UL>
+Evaluation proceeds from left to right in Forth so there is no ambiguity.
+Compare the following algebraic expressions and their Forth equivalents:
+(Do <b>not</b> enter these!)
+<UL>
+<pre>
+(100 + 50) / 2 ==&gt; 100 50 + 2/
+((2 * 7) + (13 * 5)) ==&gt; 2 7 * 13 5 * +
+</pre>
+</UL>
+If any of these expressions puzzle you, try entering them one word at a
+time, while viewing the stack with <b>.s</b> .
+
+<h3>Problems:</h3>
+
+Convert the following algebraic expressions to their equivalent Forth expressions.
+(Do <b>not</b> enter these because they are not Forth code!)
+
+# (12 * (20 - 17))
+# (1 - (4 * (-18) / 6))
+# (6 * 13) - (4 * 2 * 7)
+
+Use the words you have learned to write these new words:
+
+# SQUARE ( N -- N*N )
+# DIFF.SQUARES ( A B -- A*A-B*B )
+# AVERAGE4 ( A B C D -- [A+B+C+D]/4 )
+# HMS&gt;SECONDS ( HOURS MINUTES SECONDS -- TOTAL-SECONDS )
+
+(Answers can be found at the [#answers|end of this tutorial].)
+
+<h2 id="chario">Character Input and Output</h2>
+Because Forth is not a <i>typed</i> language, the numbers on top of the stack can
+represent anything. The top number might be how many blue whales are left on
+Earth or your weight in kilograms.  It might also be an ASCII character, or
+maybe the address of a buffer of some kind. Try entering the following:
+
+ 72 emit 105 emit
+
+You should see the word "Hi" appear. 72 is an ASCII 'H' and 105 is an 'i'.
+<b>emit</b> takes the number on the stack and outputs it as a character.  To get
+the ASCII value of a character, prepend the character with a single-quote.
+Enter:
+
+ 'W .
+ '% dup . emit
+ 'A dup .
+ 32 + emit
+
+The use of the single-quote character is a bit unusual.  It tells the
+Reva interpreter that the character that follows should be converted to
+the ASCII code representing it, rather than being considered a word.  There are
+other such modifiers in Reva which can make inputting numbers simpler:
+
+<table>
+<tr><td class=c>'a</td><td>Gives 97, the ASCII value of 'a'</td></tr>
+<tr><td class=c>%1100</td><td>Gives 12, or 1100 binary</td></tr>
+<tr><td class=c>$ff</td><td>255, or hexadecimal FF</td></tr>
+<tr><td class=c>&amp;010</td><td>8, or octal 10</td></tr>
+<tr><td class=c>#123</td><td>123 - decimal 123</td></tr>
+</table>
+
+Using <b>emit</b> to output character strings would be very tedious. Luckily
+there is a better way. Enter:
+
+ : TOFU ." Yummy bean curd!" ;
+
+The word <b>."</b> , pronounced "dot quote", will take everything up to
+the next quotation mark and print it to the screen. Make sure you leave
+a space after the first quotation mark. When you want to have text begin
+on a new line, you can issue a carriage return using the word <b>cr</b>
+. Enter:
+
+ : SPROUTS ." Miniature vegetables." ;
+ : MENU cr TOFU cr SPROUTS cr ;
+ MENU
+
+You can emit a blank space with <b>space</b> . one may output
+more than one space with the word <b>spaces</b>.  
+
+ TOFU SPROUTS
+ TOFU space SPROUTS
+ cr 10 spaces TOFU cr 20 spaces SPROUTS
+
+The word spaces outputs more than one space.  A Forth definition of spaces 
+might look like this: 
+              : spaces 0 do space loop ; 
+Let's write a similar word to emit a series of periods, like this: 
+              : periods 0 do '. emit loop ; 
+ TOFU SPROUTS 
+ TOFU space SPROUTS 
+ cr 10 spaces TOFU cr 20 periods SPROUTS
+ 
+Notice that the new word we created, <tt><b>periods</b></tt>, uses a
+"do...loop construct".  The word <b>do</b> starts a series of words which will
+be run repeatedly.  It takes the two top words on the stack as the upper limit
+and the starting value, respectively.  So in this case, the loop starts at "0"
+and goes until the "10", that is 0..10, or ten iterations of the loop.  The
+word <b>loop</b> adds one to the current value of the loop;  if it's not yet
+the upper limit, then it jumps back to just after the <b>do</b>.   We'll see
+more of these kinds of words later on.
+
+For character input, Forth uses the word <b>key</b> which corresponds to the
+word emit for output.  <b>key</b> waits for the user to press a key then leaves
+its value on the stack, but the input is buffered so you need to hit the ENTER
+key after typing your character.  Try the following: 
+<UL>
+<pre>  
+: TESTKEY ( -- )
+   ." Hit a key: " key cr 
+   ." The ASCII value=" . cr
+; 
+TESTKEY 
+</pre>
+</UL>
+
+Reva has a similar word <b>ekey</b> which does not wait for the ENTER key.  Try
+redefining TESTKEY above using <b>ekey</b> instead of <b>key</b>.
+
+<h2>Compiling from Files</h2>
+
+Reva can read read from ordinary text files so you can use any editor
+that you wish to write your programs.
+<H3>
+Sample Program</H3>
+Enter into your file, the following code.
+<UL>
+<pre>
+| Sample Forth Code
+| Author: <i>your name</i>
+
+: SQUARE ( n -- n*n )
+	dup *
+;
+
+: TEST.SQUARE ( -- )
+   cr ." 7 squared = "
+   7 SQUARE . cr
+;
+</pre>
+</UL>
+
+Now save the file to disk as 'test.f'.
+
+The text following the <b>|</b> character is treated as a comment. Note that
+in ANS Forth, this would be the <b>\</b> character.  If you were writing in
+Basic, the equivalent would be "REM".  In C it would be /* .... */, and in C++
+it would be // ...
+The text between parentheses is also a comment. 
+
+Using this file is trivial.  Start Reva, then type:
+<ul><pre>
+include test.f
+TEST.SQUARE
+</pre></ul>
+
+You might also use the file directly on the Reva command line:
+<ul><pre>
+reva test.f
+</pre></ul>
+
+The word <b>include</b> means to read in and interpret words from a file, rather
+than from the keyboard.  After the file has been read, input returns to the
+keyboard.
+
+If you have a big project that needs lots of files, you can have a file
+that will load all the files you need.
+
+<h2>Variables</h2>
+
+Forth does not rely as heavily on the use of variables as other compiled
+languages. This is because values normally reside on the stack. There are
+situations, of course, where variables are required. To create a variable,
+use the word <b>variable</b> as follows:
+
+<UL>
+<pre>
+variable MY-VAR
+</pre>
+</UL>
+
+This created a variable named MY-VAR . A space in memory is now reserved
+to hold its 32-bit value, and that space has been initialized to the value
+0.  It is also possible to initialize the variable to some other value using
+the word {{word|variable,}}. The word {{word|variable}} is what's known as a
+"defining word" since it creates new words in the dictionary. Now enter:
+
+<UL><pre>MY-VAR .</pre> </UL>
+
+The number you see is the address, or location, of the memory that was reserved
+for MY-VAR. To store data into memory you use the word <b>!</b> , pronounced
+"store". It looks like an exclamation point, but to a Forth programmer it is the
+way to write 32-bit data to memory. To read the value contained in memory at a
+given address, use the Forth word <b>@</b> , pronounced "fetch". Try entering
+the following:
+
+<UL>
+<pre>
+513 MY-VAR !
+MY-VAR @ .
+</pre>
+</UL>
+
+This sets the variable MY-VAR to 513 , then reads the value back and prints
+it.  You can also create a variable and set its value at the same time:
+
+<UL>
+<pre>
+513 variable, MY-VAR2 
+MY-VAR2 @ .
+</pre>
+</UL>
+
+The stack diagrams for these words follows:
+<table>
+<tr><td class=c>@</td><td class=c>( addr -- val ) </td></tr>
+<tr><td class=c>!</td><td class=c>( val addr -- )</td></tr>
+<tr><td class=c>variable</td><td class=c>( <name> -- )</td></tr>
+<tr><td class=c>variable,</td><td class=c>( val <name> -- )</td></tr>
+</table>
+
+Imagine you are writing a game and you want to keep track of the highest
+score. You could keep the highest score in a variable. When you reported
+a new score, you could check it against the highest score. Try entering
+this code in a file as described in the previous section:
+<UL>
+<pre>
+variable HIGH-SCORE
+
+: REPORT.SCORE ( score -- , print out score )
+   dup cr ." Your Score = " . cr
+   HIGH-SCORE @ max ( calculate new high )
+   dup ." Highest Score = " . cr
+   HIGH-SCORE ! ( update variable )
+;
+</pre>
+</UL>
+Save the file to disk, then load this code using the <b>include</b> word. Test
+your word as follows:
+<UL>
+<pre>
+123 REPORT.SCORE
+9845 REPORT.SCORE
+534 REPORT.SCORE
+</pre>
+</UL>
+
+The Forth words @ and ! work on 32-bit quantities. Some Forths are "16-bit"
+Forths. They fetch and store 16-bit quantities. Forth has some words that
+will work on 8 and 16-bit values. <b>c@</b> and <b>c!</b> work on characters
+which are usually for 8-bit bytes. The 'c' stands for "Character" since ASCII
+characters are 8-bit numbers.
+
+<i>A word of warning about fetching and storing to memory</i>: You have
+now learned enough about Forth to be dangerous. The operation of a computer
+is based on having the right numbers in the right place in memory. You
+now know how to write new numbers to any place in memory. Since an address
+is just a number, you could, but shouldn't, enter:
+<UL><TT>
+<pre>73 253000 ! ( Do NOT do this. )</pre></TT>
+</UL>
+The 253000 would be treated as an address and you would set that memory
+location to 73. I have no idea what will happen after that, maybe nothing.
+This would be like firing a rifle through the walls of your apartment building.
+You don't know who or what you are going to hit. Since you share memory
+with other programs including the operating system, you could easily cause
+the computer to behave strangely, even crash. Don't let this bother you
+too much, however. Crashing a computer, unlike crashing a car, does not
+hurt the computer. You just have to reboot. The worst that could happen
+is that if you crash while the computer is writing to a disk, you could
+lose a file. That's why we make backups. This same potential problem exists
+in any powerful language, not just Forth. This might be less likely in
+BASIC, however, because BASIC protects you from a lot of things, including
+the danger of writing powerful programs.
+
+<h2>Constants</h2>
+
+If you have a number that is appearing often in your program, it's recommended
+you define it as a "constant." Enter:
+<UL>
+<pre>
+128 CONSTANT MAX_CHARS
+MAX_CHARS .
+</pre>
+</UL>
+
+We just defined a word called MAX_CHARS that returns the value on the stack
+when it was defined. It cannot be changed unless you edit the program and
+recompile. Using <b>constant</b> can improve the readability of your programs
+and reduce some bugs. Imagine if you refer to the number 128 very often
+in your program, say 8 times. Then you decide to change this number to
+256. If you globally change 128 to 256 you might change something you didn't
+intend. If you change it by hand you might miss one, especially if your
+program occupies more than one file. Using <b>constant</b> will make it easy to
+change. The code that results is equally as fast and small as putting the
+numbers in directly. I recommend defining a constant for almost any number.
+
+<h2>Logical Operators</h2>
+
+These next two sections are concerned with decision making. This first
+section deals with answering questions like "Is this value too large?"
+or "Does the guess match the answer?". The answers to questions like these
+are either <b>true</b> or <b>false</b>. Forth uses a <b>0</b> to represent <b>false</b> and
+a <b>-1</b> to represent <b>true</b>.  In Reva, <b>true</b> and <b>false</b> are defined as 
+Forth constants.  The word <b>=</b> takes the two top values and produces 
+either <b>false</b> or <b>true</b> .  Try this:
+
+<ul><pre>
+23 71 = .
+18 18 = .
+</pre>
+</UL>
+
+You will notice that the first line printed a 0, or <b>false</b>, and the second
+line a -1, or <b>true</b>. The equal sign in Forth is used as a question, not
+a statement. It asks whether the top two items on the stack are equal.
+It does not set them equal. Other words that make comparisons of the top 
+two stack values (similar to <b>=</b>) are <b>&lt;</b> and <b>&gt;</b> .  Both 
+of these words will produce <b>false</b> or <b>true</b>.  The words <b>=</b> 
+<b>&lt;</b> and <b>&gt;</b> are available singularly for pure logical operations.  
+But because they are almost always coupled with an "if" statement, Reva has 
+special forms of "<b>if</b>" available for speed of execution.  Logically 
+there is no difference between "<b>=  if</b>" and "<b>=if</b>", but "<b>=if</b>" 
+compiles to shorter and faster code, and Reva programmers are encouraged 
+to use it.  Here is an example of its use:
+
+<UL>
+<pre>
+: DRINK? ( age -- flag )
+   20 &gt;if ." OK" else ." Underage!" then cr
+;
+
+
+20 DRINK? 
+21 DRINK? 
+43 DRINK?
+</pre>
+</UL>
+Here you are introduced to the <b>if/else/then</b> structure of Forth
+conditional statements.  Other useful "<b>if</b>" constructs are:
+
+{|border="1" cellspacing="0" cellpadding="5" align="center" 
+! "if" construct
+! what it performs
+|-
+| <b>&lt;if</b>
+| If second stack item is less than TOS
+|-
+|<b>=if</b>
+| Two top stack items are equal
+|-
+| <b>if0</b>
+| TOS is zero
+|-
+| <b>if</b>
+| Top item is TRUE
+|}
+
+These constructs are <i>not</i> the same as most Forths, except for <b>if</b>.
+When I said that true is -1, <i>that</i> was not quite true; Reva accepts
+<i>any</i> non-zero as being <b>true</b>, as do most Forths.
+
+
+For more complex decisions, you can use the <i>[Boolean]</i> operators <b>or</b> ,
+<b>and</b>, <b>xor</b> and <b>not</b> . <b>or</b> returns a <b>true</b> if either
+one or both of the top two stack items are true.  <b>and</b> returns <b>true</b>
+if both are true.  <b>xor</b> does an "exclusive or" of the two top items.
+<b>not</b> converts <b>false</b> to <b>true</b>, and any non-zero value to
+<b>false</b>.  Actually, this isn't exactly true.  The 'boolean' words
+mentioned above actually do [bitwise] operations.  That is, they "and" or
+"or", etc., each bit with the corresponding bit in the other operand.  For
+real "boolean" and use {{word|&&}}, and use <tt><b>||</b></tt> for boolean "or".
+
+<UL>
+<pre>
+true true or .
+true false or .
+false false or .
+true true and .
+true false and .
+true not .
+</pre>
+</UL>
+
+Logical operators can be combined:
+<UL>
+<pre>
+56 3 and 57 123 or and .
+</pre>
+</UL>
+
+<h2>Problems</h2>
+
+Write a word called <b>LOWERCASE?</b> that returns <b>true</b> if the number on top
+of the stack is an ASCII lowercase character. An ASCII 'a' is 97 . An ASCII
+'z' is 122 . Test using the characters " A ` a q z { ".
+
+<UL>
+<pre>
+'A LOWERCASE? . | should print 0 
+'a LOWERCASE? . | should print -1
+</pre>
+</UL>
+
+
+Write a word called <b>DEDUCT</b> that subtracts a value from a variable containing
+your checking account balance. Assume the balance is in dollars. Print
+the balance. Print a warning if the balance is negative.
+
+<UL>
+<pre>
+variable ACCOUNT
+
+: DEDUCT ( n -- )
+    ????????????????????????????????? ( you fill this in )
+;
+
+300 ACCOUNT ! ( initial funds )
+40 DEDUCT ( prints 260 )
+200 DEDUCT ( print 60 )
+100 DEDUCT ( print -40 and give warning! )
+
+</pre>
+</UL>
+(Answers can be found at the [#answers|end of this tutorial].)
+
+<h2>Loops</h2>
+
+Reva has a completely different set of loop constructs 
+than ANS Forth, so you'll want to pay attention.
+
+Most loops begin with the word <b>repeat</b>.  The first kind of loop is between 
+<b>repeat ... while</b>.  This loops until a condition is true.  Try this:
+<UL>
+<pre>
+: COUNTDOWN ( N -- )
+   repeat
+     dup . cr  | print number on top of stack 
+     1- dup    | decrement and duplicate
+   while       | if TOS is not zero, repeat.
+   drop        | get rid of value
+;
+
+16 COUNTDOWN
+</pre>
+</UL>
+This word will count down from N to zero.   The second type of loop Reva
+has is an "unconditional" loop, <b>repeat ... again</b>.  This keeps going
+until you break out of it, perhaps by using <b>;;</b> or pressing Ctrl-C :
+<UL>
+<pre>
+: MAIN-LOOP
+   repeat
+      ." looping again ..." cr
+   again
+;
+</pre>
+</UL>
+
+Reva also has the <tt>do ... loop</tt> construct like ANS Forths do.  It
+is used like this:
+<ul>
+<pre>
+: looper 
+   10 0 
+   do 
+      ." Iteration #" i . cr 
+   loop 
+;
+</pre>
+</ul>
+If you type <tt>looper</tt> you will see 10 lines, starting with "Iteration
+#0".
+
+Reva does not have the <tt>do ... +loop</tt> construct provided for by many
+other Forths (which allows one to step through a loop in increments other than
+1).  Instead, Reva uses the normal <tt>do...loop</tt> structure but adds the
+word <b>skip</b> . Here is an example of a <b>do...loop</b> with <b>skip</b>:
+<ul>
+<pre>
+: skip-looper  
+   100 0 
+   do 
+      ." skip-iteration # " i . cr 
+   10 skip loop 
+;
+</pre>
+</ul>
+If you type skip-looper you will see 10 lines, each line's output incrementing
+by ten."
+
+Please note that
+<pre>
+: wrong 
+   0 101 
+      do i . 
+   -10 skip loop 
+;
+</pre>
+<b>is not the same as:</b>
+<pre>
+: something 
+   0 101 
+     DO I . 
+   -10 +LOOP ;
+</pre>
+in other Forths. <b>skip</b> only decrements a counter on the return stack.
+
+Another method of looping is recursion.  You might rewrite the "forever" loop
+given above as:
+<UL>
+<pre>
+: MAIN-LOOP
+   ." looping again ..." cr
+   MAIN-LOOP
+;
+</pre>
+</UL>
+In this example, an infinite loop is effectively made by <i>recursion</i>, that
+is, a word which calls itself.  Unlike ANS Forths, Reva allows one to
+recurse simply by adding the name of the word being defined inside its own 
+definition.  Unlike other Forths, Reva does not "smudge" the dictionary while 
+defining a word.  This allows you to easily recurse.  
+
+But what if one wants to use an earlier definition that is similarly named, 
+rather than recursing?  Reva provides the word {{word|prior}} to accomplish
+this task.  For example:
+<UL>
+<pre>
+: cleave ." separates" ;
+: cleave ." joins " prior cleave ;
+</pre>
+</UL>
+
+<h2>Text Input and Output</h2>
+
+You learned earlier how to do single character I/O. This section concentrates
+on using strings of characters. Reva has several varieties of [strings],
+and it is good to know when to use each type.
+
+The "normal" string is a <i>Forth string</i>, consisting of an address,count
+pair.  That is, it is represented on the stack by an address which points to the
+start of the character data, and a count of characters.  In stack diagrams it is
+often listed as <tt>( a n -- )</tt>.  To create such a string, you may use a
+double-quote character, <b>"</b> .  That word parses until if finds another
+double-quote, and then it puts the address,count on the stack.  Inside a
+colon-definition, it compiles a reference to that string data so that at
+runtime, the string data will appear on the stack.
+
+<ul>
+<pre>
+" This is a string" type cr
+: STR " Hi there!" ;
+
+STR type cr
+</pre>
+</ul>
+
+Other Forths use the word <b>s"</b> to accomplish the same thing Reva
+does with <b>"</b>.  The word <b>type</b> seen above, prints out the Forth
+string on top of the stack.
+
+The second type of string Reva allows is a "counted" string.  This is an
+address <tt>( a -- )</tt>, where the first byte (or int, if a 'long' counted string) contains the
+length of the string data.  The string data follow the count byte (or int)
+directly.  There are no words to create such a string directly, but the word
+<b>place</b> will take a Forth string and "place" it into a counted-string in
+the area requested.  For a string longer than 255 characters, use <b>lplace</b>
+rather than <b>place</b>.  To convert a counted string to a Forth string, use
+the word <b>count</b> (or <b>lcount</b>).  To append a Forth string to a counted
+string, use <b>+place</b> (or <b>+lplace</b>).  Finally, append a character to a
+counted string with <b>c+place</b>.
+
+A third type of string supported by Reva is the "ASCIIZ" string.  That
+is, a string which is terminated by a NUL byte (ASCII-ZERO).  These are the
+native strings for C, and both Windows and Linux API functions expect such
+strings.  The <b>"</b> word automatically NUL terminates the string it creates,
+and the counted-string words also NUL terminate their strings.  This means that
+you can pass a Forth string to a Windows or Linux API call (just remember to
+<b>drop</b> the count first!).
+
+<UL>
+<pre>
+" Reva rocks!" pad place  | 'pad' now contains a counted -string
+pad count type cr         | see what it is...
+</pre>
+</UL>
+
+A good thing to know is that in interactive mode, the <b>"</b> word uses a
+4096 byte buffer to create the strings.  When it reaches the end of this buffer,
+it wraps around.  This means that you can do stuff like:
+<ul>
+<pre>
+" file.c" " file.f" rename-file
+</pre>
+</ul>
+...and the strings will be distinct.  When using <b>"</b> inside a
+colon-definition, the strings will be compiled to a separate area which by
+default is 64K in size.  So any "compiled" string will be physically separate
+from the "temporary" string area, and there is no danger of overwriting them
+(unless you have a bug in your code...).  If you try to compile more than 64K of
+string data, Reva will allocate more "compiled string space", in
+increments of <tt>cstrsize</tt> (you can change that size, which defaults to
+64K, simply by writing a new value like <tt>100,000 cstrsize !</tt> before you
+need to reallocate).
+
+If you need to have a double-quote character inside your string, you simply
+need to preface it with a <b>\</b> character like so:
+<pre>
+" \"Mary!\", her mother said, \"Come in for dinner!\""
+</pre>
+This will result in <tt>"Mary!", her mother said, "Come in for dinner!"</tt>.
+
+<h2>Changing Numeric Base</h2>
+
+Our numbering system is decimal, or "base 10." This means that a number
+like 527 is equal to (5*100 + 2*10 + 7*1). The use of 10 for the numeric
+base is a completely arbitrary decision. It no doubt has something to do
+with the fact that most people have 10 fingers (including thumbs). The
+Babylonians used base 60, which is where we got saddled with the concept
+of 60 minutes in an hour. Computer hardware uses base 2, or "binary". A
+computer number like 1101 is equal to (1*8 + 1*4 + 0*2 + 1*1). If you add
+these up, you get 8+4+1=13 . A 10 in binary is (1*2 + 0*1), or 2. Likewise
+10 in any base N is N .
+
+Forth makes it very easy to explore different numeric bases because
+it can work in any base. Try entering the following:
+<UL>
+<pre>
+decimal 6 binary .
+1 1 + .
+1101 decimal .
+</pre>
+</UL>
+Another useful numeric base is <i>hexadecimal</i>. which is base 16. One
+problem with bases over 10 is that our normal numbering system only has
+digits 0 to 9. For hex numbers we use the letters A to F for the digits
+10 to 15. Thus the hex number 3E7 is equal to (3*256 + 14*16 + 7*1). Try
+entering:
+<UL>
+<pre>
+decimal 12 hex .	| print C
+decimal 12 256 * 7 16 * + 10 + .s
+dup binary .
+hex .
+</pre>
+</UL>
+A variable called <b>base</b> is used to keep track of the current numeric
+base. The words <b>hex</b> , <b>decimal</b> , and <b>binary</b> work by changing
+this variable. You can change the base to anything you want.  As mentioned
+before, certain modifier characters allow you to enter decimal, hex, binary or
+octal (base 8) numbers no matter what the current base is.
+Try:
+<UL>
+<pre>
+7 base !
+6 1 + .
+base @ . | surprise!
+</pre>
+</UL>
+You are now in base 7 . When you fetched and printed the value of BASE,
+it said 10 because 7, in base 7, is 10.
+
+<h2>Libraries</h2>
+
+Reva includes a number of "libraries", which implement more specialized functionality which is not
+part of the base Reva program.  This was done to keep Reva small, and particularly since many of the library words are not needed for every application.
+
+As an example, "double-cell math" is in a library, not directly part of Reva.  To get the double-cell words, you have to load the library.  This is done very easily, like this:
+
+  needs math/doubles
+
+To find out what other libraries are distributed with Reva, you can type:
+
+  help libraries
+
+<h2>Files & File Handling</h2>
+
+For details on all the file handling words in Reva, use the help facility:
+
+  help file-io
+
+
+As a simple example, let's create a file which will have "Hello world!" in it:
+
+<pre>
+" hello.txt" creat
+dup " Hello world!" rot write
+close
+</pre>
+
+The first line creates the file "hello.txt" in the current directory, if it
+did not already exist (use {{word|open/rw}} to open an existing file for
+writing).  The return value is the 'handle' of the file, which we immediately
+{{word|dup}}.  The string to write follows, so the stack at this point looks
+like:
+
+  file-handle file-handle  address-of-string  size-of-string
+
+The word {{word|write}} expects the handle to write to in TOS, so we do
+{{word|rot}}, and then write out the buffer to file.  All that remains is to
+close the file (this is almost always a good idea, even though the OS will
+close files on our behalf if we forget).
+
+Verify that you now have a file "hello.txt" with the text indicated.
+
+Note that we did not check for errors.  The Reva file-io philosophy is
+that "it normally works", so make the code easier to read by not having error
+code checks everywhere.  However, you can check for errors by consulting the
+value held in {{word|ioerr}} after each I/O operation.
+
+Note that a simple way to read in an entire file is via {{word|slurp}}.  That
+word allocates memory for a buffer big enough to hold the file, and returns
+the contents of that file as a [strings|string].  This works great for small files, but
+you don't want to try it on big ones, probably...
+
+<h2 id='answers'>Answers to the problems</h2>
+
+If your answer doesn't exactly match these but it works, don't fret. In
+Forth, there are usually many ways to the same thing.
+
+<h2>Stack Manipulations</h2>
+
+<ol>
+<li class=c>swap dup
+<li class=c>rot drop
+<li class=c>rot dup 3 pick
+<li class=c>swap over 3 pick
+<li class=c>-rot 2dup
+</ol>
+
+<h2>Arithmetic</h2>
+
+
+ (12 * (20 - 17))       ==> 20 17 - 12 *
+ (1 - (4 * (-18) / 6))  ==> 1 4 -18 * 6 / -
+ (6 * 13) - (4 * 2 * 7) ==> 6 13 * 4 2 * 7 * -
+
+ : SQUARE ( N -- N*N ) 
+    DUP * ;
+
+ : DIFF.SQUARES ( A B -- A*A-B*B )
+   swap SQUARE
+   swap SQUARE - ;
+
+ : AVERAGE4 ( A B C D -- [A+B+C+D]/4 )
+   + + + ( add'em up )
+   4 / ;
+
+ : HMS>SECONDS ( HOURS MINUTES SECONDS -- TOTAL-SECONDS )
+   -rot swap ( -- seconds minutes hours )
+   60 * + ( -- seconds total-minutes )
+   60 * + ( -- seconds ) ;
+
+<h2>Logical Operators</h2>
+
+<UL>
+<pre>
+: &gt; &gt;if -1 else 0 then ;
+: &lt; &lt;if -1 else 0 then ;
+: LOWERCASE? ( CHAR -- FLAG , true if lowercase )
+	dup 123 &lt;
+	swap 96 &gt;
+	and
+;
+</pre>
+</UL>
+
+<h2>Conditionals</h2>
+
+<UL>
+<pre>
+: DEDUCT ( n -- )
+	ACCOUNT @ 
+	swap - dup ACCOUNT ! 
+	." Balance = $" dup . cr 
+	0 &lt;if
+	   ." Warning!! Your account is overdrawn!" CR
+	then
+;
+</pre>
+</UL>

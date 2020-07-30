@@ -1,0 +1,42 @@
+| 386 assembler, MMX support instructions
+| see LICENSE 
+| vim: ft=reva :
+
+push~
+~ ~asm 
+
+THROW: THROW_ASM_MMX
+5 0 REG MM0 
+5 1 REG MM1 
+5 2 REG MM2 
+5 3 REG MM3 
+5 4 REG MM4 
+5 5 REG MM5 
+5 6 REG MM6 
+5 7 REG MM7 
+: ASMMMX1:   create  ,  does>  c@ swap WF,  NORMAL  ;
+
+: MOVD  ( s d -- )
+   PREFIX-0F      
+   dup MM?  if     ( s-r/m mmxreg )   | Destination is an MMX register
+      over # =if THROW_ASM_MMX then
+      $6e 1, R/M,
+   else            ( mmxreg d-r/m )
+      dup REG?  if  swap  else  rot  then
+      $7e 1, R/M,
+   then
+;
+: MOVQ  ( -- )
+   PREFIX-0F      
+   dup MM?  if   ( s-mmxreg d-mmxreg )   | Destination is an MMX register
+      over # =if THROW_ASM_MMX then 
+      over REG? if THROW_ASM_MMX then
+      $6f 1,  over MM?  if  RR,  else  MEM,  then
+   else          ( s-mmxreg d-mem )
+      dup REG? if THROW_ASM_MMX then
+      $7f 1, rot MEM,
+   then
+;
+	77 ASMMMX1: EMMS  | ( -- )  prefix-0f  $77 asm8,  ;
+
+pop~

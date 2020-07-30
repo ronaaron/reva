@@ -1,0 +1,28 @@
+| GUI application framework
+| vim: ft=reva :
+
+needs app/base
+needs ui/gui
+
+push~
+~ui
+~
+~app
+
+::
+	pre-main
+	gui-main-loop
+	post-main
+	; is ~sys.appstart
+
+~util
+: save ( <name> -- )
+	['] pre-main @ (main) =if
+		." You forgot to override 'pre-main', not saving anything" cr
+	;then
+
+	parsews makeexename 2dup (save-gui)
+	post-save
+	." Saved application as: " type cr bye
+	;
+pop~

@@ -1,0 +1,920 @@
+﻿<h1 align='center'>Further Explorations of Reva</h1>
+<center>(A "Beginner to Intermediate" Tutorial)</center>
+
+<font color=red>NOTE:</font> This tutorial is due for a major update to reflect current versions of Reva...
+
+<h2>Welcome to Reva. </h2>
+
+It is expected that you will have already downloaded [Reva], installed it, 
+gone through the [./tutorial.wiki|basic tutorial], and perhaps played around
+with it.  If you haven't yet, you should.  It is also useful to look at the
+code in the <i>examples</i> subfolder, to see how things work generally.
+
+This documentation is mostly of an <i>exploratory</i> nature, but along the way 
+we may define a few words that will be of some use to us in our own 
+programming.  At the very least, they will give some experience with coding 
+in <i>Reva</i>, and they will assist us in understanding some of its internals.
+
+These beginner-to-intermediate docs were written by someone like <i>you</i>,
+someone who felt the need to play with Reva to get to know it.  If you have
+something to add or correct, please share what you've learned.
+
+<h2>Get Familiar with Reva.</h2>
+
+From the moment you type <b>reva</b>  at your console, you enter a new
+world.  It almost looks the same: the blinking cursor is very familiar.
+
+The only suggestion that you have stepped through a portal to the Forth
+dimension, is that now the command prompt is different.  But isn't it
+reassuring?  Even if [http://en.wikipedia.org/wiki/Rod_Serling|Rod Serling] shows up at your computer terminal, saying "there's a signpost, up ahead", you just know that everything is going to
+be <b>ok></b>.
+
+Now you are in a simpler world.  Simple, yes: but a bit on the 'bizarro' side,
+too.  It's probably not what you're used to.  This Forth universe is
+postfix, integer, attentive to stacks.  Your prior experience with programming
+languages probably won't help much.  Forth is both interpreted and compiled;
+it has a core set of words but is infinitely extensible, and one may even
+redefine the core at will.  You are closer now to the machine than you ever
+thought possible.  In some sense, Forth is a very powerful macro-Assembler.
+
+Furthermore, we might learn about other implementations of Forth from their
+documentation or books.  But even if we knew everything there was to know
+about <i>other</i> Forths, <i>Reva</i> is unique, and its documentation is
+<i>Spartan</i>.  We're pretty much on our own here.    
+
+Like Adam in the garden of Eden, your task is to name things that have never
+been named.  But still: you want to know first, what is already named, and how
+is it named?  It's time to look around.
+
+<h2>words</h2>
+
+When we type the command <b>words</b> at the <b>ok></b> prompt, <i>Reva</i> gives us a list of words 
+that we can use in our own programming.  In Reva version 6.0.2, for example, there are about 360 words 
+already defined, beginning with <b>syscall</b> (under 
+<i>Linux</i>; under <i>Windows</i>, the first word is <b>cold</b>) and ending with <b>argv</b>.  This is unlikely to change drastically to a much 
+higher number of words in later versions, because ''Reva's'' core words are considered an 
+optimal minimal set.  It is even possible that some words may be <i>factored out</i> in later 
+versions of <i>Reva</i> (i.e. there may even be <i>fewer</i> words).  For your personal reference, type:
+
+<tt>.ver</tt>
+
+and note how many words there are in the version you are using.  Also, take note of 
+where your user programs are going to be compiled by typing 
+
+<tt> here .  </tt>
+
+(Don't forget the period <i>.</i> It outputs to the screen the value of the varialbe "here").
+
+<h2>dump</h2>
+
+Let's have a closer look at our dictionary.  Reva 6.0.3 (and later) has a word called <b>dump</b> 
+defined like this in src/misc.f:
+
+<tt>
+<pre>
+| implementation of 'dump' :
+create dump$ 17 allot	| space for 16 characters
+: dumpasc
+	dump$ count dup 0if 2drop else
+		16 over - 3 * spaces type
+	then cr dump$ off ;
+: ?nl dup 0; 16 mod not 0; 
+	drop over dumpasc .x ;
+: >printable dup 32 127 between not if drop '. then ;
+: dump 0; dump$ off 
+	over .x 0 do | iterate for each line:
+		i ?nl drop dup c@ dup >printable dump$ c+place .2x space 1+
+	loop drop dumpasc ;
+ </pre></tt>
+
+A short explanation is in order.  The only word that we currently have access 
+to is <b>dump</b> itself, the words that it uses ( <b>dump$</b>, <b>dumpasc</b>, <b>?nl</b>, 
+<b>>printable</b>) are hidden to us.  If we wanted to extend <b>dump</b> in some way, 
+we could create a new version, but to access those hidden words we would
+have to redefine them so that we can play with them.  Try entering the
+program for <b>dump</b> above at the terminal (including those previously
+hidden words).  You will notice that <i>you get no warning</i> when creating the word 
+that is already defined (i.e. <b>dump</b>).  This is intentional ... unlike other Forths, <i>Reva</i> assumes you know what you are doing when you define a word; sometimes this can "bite" you, though -- so be aware that redefining existing words is silent.  All the more reason
+to be aware of what already exists via a walk-about like this tutorial.
+
+We have redefined <b>dump</b> on top of the 
+dictionary, replacing the old one in the search order.  In other words, the 
+older <b>dump</b> is still there, but our interpreter can't see it (actually, it can if we use the word <b>prior</b>, but that's for another time).  We can 
+similarly redefine <i>any</i> word in Reva's dictionary, and use it exclusively 
+of the old one.  However, we cannot expect words that called the old word 
+(in this case Reva's original <b>dump</b>) to use our <i>new</i> word automatically.  
+That feature <i>could</i> be built by us; in fact, <i>many</i> words in Reva are 
+written as special vectored words (with the defining word <b>defer</b>) to 
+make this job easier for us - as if we are <i>expected</i> to change the core.  
+We'll be looking at some of these deferred words in later sections.
+
+You may be unfamiliar with several of the words used in this program.  
+It would be a good idea to type <i>help</i> with any of them you don't understand
+for an explanation of their use, for example:
+
+ help 0;
+ help .x
+ help between
+ help c+place
+
+We'll be looking at <b>help</b> more in-depth in the next major section.  For now, 
+realize that all of the words that Reva delivers 'out of the box'  have a <b>help</b> 
+associated with them. <i>Use it liberally</i>. 
+
+Later in this section we are going to look at the way <b>words</b> works and 
+modify it slightly to give us a different output.
+
+----
+<u>Noob exercise</u>: If you have never seen or used the Reva-unique word  
+<b>0;</b>  before, perhaps it would be instructive if you write out two stack 
+diagrams for every word in the definition  <b>?nl</b>  (one as input, and one 
+as output), and describe what is happening (e.g.):
+<pre>
+ ( a n  -- ) :  		( -- a n ) 	| define a new word
+ ( a n -- )  ?nl		( -- a n )	| call it ?nl
+ ( a n -- )  dup		( -- a n n )	| dup TOS to work with it
+ ( etc.)
+</pre>
+----
+
+Now that we have defined five more words ( <b>dump$</b> , <b>dumpasc</b> , <b>?nl</b> , 
+<b>&gt;printable</b> , <b>dump</b>), type 
+
+ here .
+
+again.  When we compare the new <b>here</b> against the old <b>here</b>, we find 
+that our five new words have increased the dictionary size by around 400 - 
+500 bytes.  Let's look at that memory with our new <b>dump</b>.  Examine the 
+output of 
+
+<pre>
+here 550 - 600 dump
+</pre>
+
+With any luck, you should see something like this (likely your memory 
+addresses will be different):
+
+<tt><pre>
+ok> here 550 - 600 dump
+08051D55 C3 90 90 E8 A7 8B FF FF 08 2E 2E 2E 2E 2E 2E 2E ................
+08051D65 2E 2E 2E 2E 2E 2E 2E 2E 2E 00 90 E8 E3 FF FF FF ................
+08051D75 E8 FE C3 FF FF 8D 76 FC 89 06 85 C0 AD 0F 85 10 ......v.........
+08051D85 00 00 00 8B 46 04 8D 76 08 E9 3D 00 00 00 90 90 ....F..v..=.....
+(etc)
+</pre></tt>
+
+<h2>dictionary</h2>
+
+Those of you familiar with other Forth implementations might be startled 
+to notice that the human-readable dictionary (where the actual 
+words appear) is not contiguous with the executable code of <i>Reva</i>.  
+So where is it?
+
+<i>Reva</i> does not hash the dictionary for speedy searching as some other Forths do, but the <b>find</b> word
+is crafted carefully to maximize its speed.  Some Forth 
+implementations that have hashing don't even require the words to be kept in 
+human readable form after they are defined.  But ''Reva's'' dictionary is not 
+hidden in this way.  <i>So where is it?</i>
+
+''Reva's<i> dictionary is compressed with Lempel-Ziv encoding upon </i>Reva's'' 
+creation, and unpacked and initialized at runtime.  <i>So where is it?!</i>
+
+We can examine the entire dictionary space of Reva with this command:
+ 
+<pre>
+    ( in Linux:)    ' syscall  here over - dump
+    ( in Windows:)  ' cold here over - dump
+</pre>
+
+As soon as you hit return, watch closely for ''Reva's'' word-list among our 
+new ascii print-out.
+
+Did you see it?  Probably you saw <i>something</i>, before it scrolled away.  
+There were a few strings in there that seemed almost recognizable.  We are 
+going to do this again, but this time we will redirect ''Reva's'' output to a 
+file, so we can go back and look at the entire dump
+
+<h2>Redirecting Output to a File</h2>
+
+Assuming you still have our new <b>dump</b> defined in the <i>Reva</i> dictionary, 
+type the command
+
+<tt><pre>
+	(from Linux)	save bin/Revadump 
+	(from Windows)  save bin\Revadump.exe 
+</pre></tt>
+
+This will exit <i>Reva</i> and you are now back in the ordinary world of the 
+computer console.  Have a look in your <i>Reva</i> bin directory now, there 
+should be a new executable that you put there called <b>Revadump</b>.  You have 
+created a new version of <i>Reva</i> for your own use, what <i>Reva</i> and other Forths 
+call a <b>turnkey program</b>: in other words, we have modified <i>Reva</i> so that 
+any user besides ourselves can use it (turn the key and it's theirs).  
+Thanks to the generosity of Ron Aaron, and according to [License|Reva's license], 
+our new version of <i>Reva</i> is free to give away to anyone (and so is any other 
+turnkey program you might want to create with it).
+
+Start <b>Revadump</b> with the console command: 
+
+<tt><pre>
+	(from Linux)	bin/Revadump &gt;memorymap.txt 
+	(from Windows)  bin\Revadump &gt;memorymap.txt 
+</pre></tt>
+
+This will redirect screen output to the file <i>memorymap.txt</i>  - you won't 
+be able to see the results of what you're typing until later when we look at 
+<i>memorymap.txt</i>.  In fact, you won't even be able to see the reassuring <b>ok></b> 
+prompt.  Don't worry.  You're still in <i>Reva</i>, you're still in Forth..
+
+Once again (carefully now) type
+<tt>
+<pre> 	
+	( in Linux:)  ' syscall  here over - dump
+	( in Windows:) ' cold here over - dump
+
+</pre></tt>
+
+Now type <b>bye</b> and load up the new file you've created in your <i>Reva</i> directory 
+(<b>memorymap.txt</b>) with your favourite text editor.
+
+See?  There's the <b>ok></b> prompt - and the results of our ascii <b>dump</b>, showing 
+all of <i>Reva</i> from the first definition in the dictionary ( Linux: <b>syscall</b> | 
+Windows <b>cold</b>) to the top of the dictionary ( <b>here</b> ).  Now we can take our 
+time exploring ''Reva's'' memory.   Think of it as a poor man's memory map of <i>Reva</i>. 
+
+You might want to open a copy of <i>Reva</i> (or <i>revadump</i>) to run some tests as we explore it.
+
+<h2>Exploring the poor man's memory map</h2>
+
+The first readable word we see if we're in Linux (about 210 hex bytes above the 
+start of the dump) is the word 	
+
+: <tt>Reva</tt>  
+
+repeated twice.  This is actually 
+part of the executable portion of the word <b>getpid</b> (''Reva's'' second word in Linux).
+
+Continue to scroll through the memory map you generated.  It takes a while before 
+you recognize anything interesting.  But eventually you see a string of numbers and 
+letters like so:
+
+: <tt>0123456789ABCDEF</tt>  
+
+This is part of a table used by <i>Reva</i> to convert numbers (you can examine the 
+source for it in <b>revacore.asm</b> in the src directory).  Then we see (<i>again</i>, if 
+we're in <i>Linux</i>, or for the first time if we are in <i>Windows</i>) the words 
+
+: <tt>Reva Reva</tt> 
+
+The source file, <b>revacore.asm</b> tells us that the string of numbers and letters 
+is part of the process <b>todigit</b> , and the words <tt>Reva Reva</tt> are part of 
+the process <b>_save</b>.  This can be corroborated by comparing the addresses printed 
+in our poor man's memory map to the execution addresses of these high-level forth words:
+
+<pre>
+	' digit&gt; .
+	' (save) .
+</pre>
+
+Scroll a bit further.  Here we go: 
+finally!  Way up above the actual code for the word <b>syscall</b> (or <b>cold</b>), 
+we find the human-readable dictionary entry for the word.  As we take a closer 
+look at the dump, and compare it to the source files and documentation, the fog 
+begins to clear and we begin to understand dictionary entries.  
+
+At the beginning of the actual dictionary of human-readable words, your printout 
+might look something like this (the addresses will likely be different):
+
+<tt><pre>
+0804A914 00 00 00 00 01 00 00 00 00 00 00 00 FC DA 04 08 ................
+0804A924 FB DA 04 08 C4 98 04 08 00 00 00 00 04 95 04 08 ................
+0804A934 52 07 73 79 73 63 61 6C 6C 90 90 90 C4 98 04 08 R.syscall.......
+0804A944 2C A9 04 08 AC 96 04 08 0B 06 67 65 74 70 69 64 ,.........getpid
+0804A954 C4 98 04 08 44 A9 04 08 70 98 04 08 2E 04 63 6F ....D...p.....co
+0804A964 6C 64 90 90 C4 98 04 08 58 A9 04 08 F0 B1 04 08 ld......X.......
+(etc)</pre></tt>
+
+<h2>Accessing the dictionary structure</h2>
+
+Included with your <i>Reva</i> distribution is a file called <b>reva.txt</b> in 
+the <b>doc</b> directory <b>(not any more as of 6.0.3)</b>
+For version 6.0.2, <b>reva.txt</b> gave a short explanation of the directory 
+structure, which it calls a "simple linked list".  
+This is the pertinent 
+information from that document about the basic format of each dictionary entry:
+
+<pre>
+		dd word_class
+	current_entry:
+		dd link_to_previous_entry
+		dd address_of_code
+		db size_of_word
+		db length_of_name
+		db 'name_of_word'
+</pre>
+
+The structures within our dump above can thus be unravelled as follows:
+
+<tt><pre>
+0804A928 C4 98 04 08 		| word_class ( of syscall )
+0804A92C 00 00 00 00 		| link_to_previous_entry ( none )
+0804A930 04 95 04 08 		| address_of_code
+0804A934 52 			| size_of_word
+0804A935 07 			| length_of_name
+0804A936 73 79 73 63 61 6C 6C   | 'name_of_word' (  "syscall"  )
+0800493D 90 90 90 		| 
+0804A940 C4 98 04 08 		| word_class ( of getpid )
+0804A944 2C A9 04 08 		| link_to_previous_entry ( syscall )
+0804A948 AC 96 04 08 		| address_of_code
+0804A94C 0B 			| size_of_word
+0804A94D 06 			| length_of_name
+0804A94E 67 65 74 70 69 64 	| 'name_of_word' (  "getpid" )
+0804A954 C4 98 04 08 		| word_class (of cold )
+0804A958 44 A9 04 08 		| link_to_previous_entry ( getpid )
+0804A95C 70 98 04 08 		| address_of_code
+0804A95D 2E 			| size_of_word
+0804A95E 04 			| length_of_name
+0804A95F 63 6F 6C 64		| 'name_of_word'	(  "cold"  )
+0804A964 90 90 			|
+0808A968 C4 98 04 08 		| word_class ( of the next word prompt)
+</pre></tt>
+
+An observation of the above unravelling is in order.  Between the 
+'name_of_word' ("syscall") and the word_class of the next word (<b>getpid</b>) 
+are a few inconsequential bytes; but these bytes don't appear between 
+the 'name_of_word' ("getpid") and the word_class of the next word (<b>cold</b>).  
+Why?  The reason is, many of Reva's operations on the dictionary require 
+fast fetching of cell-aligned values.  Because the names of the words 
+are of various lengths, sometimes a bit of filler appears.  All of these 
+details are taken care of by the <b>macro</b> which defines the dictionary 
+entries when <i>Reva</i> is compiled from scratch (Note that to get up-to-date 
+information on the current version of Reva's dictionary structure,
+you must look in the <b>src</b> directory, <b>macros</b> file, for the FASM assembler macro <b>DICT</b>).  
+This is instructive: when we ourselves are working with strings of 
+characters or other byte-size data, we may need to <b>align</b> our data, 
+or <i>Reva</i> will crash.  But for the most part, when working with Reva's 
+dictionary, this is already done for us.
+
+The following table provides a ready reference for some of the ways 
+that we can use to access Reva's dictionary structure and the values 
+it contains.  As usual, there are several ways to get what you want in Forth.
+
+Note the differences between 
+<tt>
+<pre>'  
+( that is, the single apostrophe, which is a word pronounced 'tic') 
+</pre>
+</tt>
+and the <i>Reva</i> word 
+<tt>
+<pre>''
+( which might be called 'tic-tic' - i.e. a double apostrophe, NOT a quotation mark!)
+</pre>
+</tt> 
+
+''' '  (tic)<b> returns the </b>xt''' 
+of the word, while '''' ' (tic-tic)'<i> returns the </i>dictionary pointer''.  
+
+In general, we can say 
+<tt>
+<pre>
+" syscall" (find) ( using quotation marks) 
+</pre>
+</tt>
+
+returns the same value as 
+
+<tt>
+<pre>'' syscall  ( using tic-tic)
+</pre>
+</tt>
+
+<table border="1" cellspacing="0" cellpadding="3" align="center">
+<tr><th>dictionary element</th><th>to get the address: (these use quotation marks)
+</th><th>to get the value there: (these use tic-tic)</th></tr>
+<tr>
+<td>dd word_class</td>
+<td>" syscall" (find) &gt;class</td>
+<td><nowiki>'' syscall &gt;class @</nowiki></td>
+</tr>
+<tr>
+<td>dd link_to_previous_entry</td>
+<td>" syscall" (find)</td>
+<td><nowiki>'' syscall @</nowiki></td>
+</tr>
+<tr>
+<td>dd address_of_code</td>
+<td>" syscall" (find) &gt;xt</td>
+<td><nowiki>' syscall (or '' syscall &gt;xt @ )</nowiki></td>
+</tr>
+<tr>
+<td>db size_of_word	</td>
+<td>" syscall" (find) &gt;size</td>
+<td><nowiki>'' syscall &gt;size @</nowiki></td>
+</tr>
+<tr>
+<td>db length_of_name</td>
+<td>" syscall" (find) &gt;name </td>
+<td><nowiki>'' syscall &gt;name count</nowiki></td>
+</tr>
+<tr>
+<td>db 'name_of_word'</td>
+<td>" syscall" (find) &gt;name 1+</td>
+<td><nowiki>'' syscall &gt;name count type</nowiki></td>
+</tr></table>
+
+Note that there is a word in Reva for virtually every element of the dictionary structure: 
+
+:	<b>&gt;body</b>, <b>&gt;name</b>, <b>&gt;xt</b>, <b>&gt;size</b>, and <b>&gt;class</b>.  
+
+There is no "<b>&gt;link</b>" , however, because the entire structure is referenced by this element (i.e. link_to_previous_entry).  In other words, 
+
+<pre>'' syscall</pre> 
+
+returns the link address already, the link itself is the dictionary pointer.
+	
+<u>Intermediate Exercises:</u> 
+
+[#answers|Answers to these Intermediate Exercises] can be found at the end of the section.  But try these.  Really.  You will grow not only as a programmer, but as a person.
+
+<blockquote>
+1. Given any dictionary address, print out all the elements of the structure (addresses and values contained there), and return the value of the next link.  Stack diagram: ( a -- a' )
+
+2. Given an address of any code in the dictionary, write a program to find the Forth name of that executable bit of code.  For example, given the address $080496AC from the examples above, do a reverse look-up and return the name "getpid"
+
+3. Using the reverse look-up capabilities of your program in Exercise 2, re-write our dump program above to print out the names of the forth words from the addresses we are examining.
+
+4. Use the new dump program you have written to output a new version of memorymap.txt, and explore <i>Reva</i> again from the bottom up.
+</blockquote>
+
+<u>'<b>Forth tip:</b>'</u>
+  
+Hopefully (if you have attempted the exercises) you discovered that your answer to Exercise 1 
+was helpful in writing and debugging your answer to Exercise 2, and the answer to Exercise 2 
+was helpful in writing and debugging the answer to Exercise 3.  In general, we can say that 
+<em style="color:red;font-style:normal"> whenever you create or access a structure you should provide a way to show the structure 
+from Forth.</em>  Consider providing such words in all of your code from now on.  <em style="color:red;font-style:normal">If any task seems 
+daunting in the beginning, try breaking it down into smaller problems which can be solved 
+interactively.</em>  One way to do this is to write some code to print the data and structures 
+you are working with.  Once that is done, the solution to the bigger problem is often readily 
+apparent and trivial to implement.
+
+<h2>Inner Workings of Reva's Interpreter</h2>
+
+If you have been following this tutorial, you will remember a series of 
+numbers and letters that was one of the first things we saw when we examined 
+''Reva's'' memory, namely 
+
+<tt><pre>
+	0123456789ABCDEF
+</pre></tt>
+
+We discovered this was part of the Forth word <b>digit></b>.  Take a look now at 
+your latest <b>memorymap.tx</b>t (the one you created for yourself after doing 
+Exercise 4, above.  You did that, didn't you?).  Find that string of numbers and 
+letters, confirm that it belongs to <b>digit></b> (with your newest dump, there's 
+no mistaking it) and look at the name of the word in the dictionary just before 
+<b>digit></b>.  That word ( <b>interp</b> ) is what we are going to talk about in 
+this section of the tutorial.
+
+By now, you should have a pretty good idea of what is happening when you type a 
+word beside the ok> prompt.  The Reva Forth interpreter begins to search for the 
+word you have typed.  It looks in the last defined word first ( <b>last @</b> ) 
+(pretty much the same way your answer to Exercise 2 did).  Each word will have a 
+link to the previous word in the dictionary, ending with the word we first examined, 
+<b>syscall</b> (or <b>cold</b>), whose link is 00000000.  If the interpreter finds 
+the word before it comes to the end of its search, it sends the xt off to be 
+executed (or compiles it according to its class, depending on the state).  
+If it doesn't find your word, it tries to make sense of it as a number.  
+If that fails, it returns the string of nonsense characters that you tried to 
+sell it, and replies ? 
+
+The word <b>interp</b> can be found in the <b>src</b> directory in <b>revacore.asm</b>.  
+This is written in assembler for speed because this is the loop that Reva ordinarily 
+moves through, awaiting input from you the user, and speed here makes it feel more 
+responsive.  
+
+Most Forth implementations will give you access to an assembler of the computer 
+it is written on (and some would argue that if it does not, it cannot truly be called 
+a Forth).  The reason for the reliance upon the assembler is that many time-critical 
+loops may need to be hand-tweaked for execution speed.  This is also why Forth is 
+often used for real-time control.  In general, a programmer will get a program 
+working in Forth, and then tweak bits and pieces in assembler to get to the speed 
+required.
+
+We are going to <i>reverse</i> this process here: rather than go from 
+high-level Forth to assembler, we'll take the assembler listing and write a high-level 
+version of the Forth word <b>interp</b>.   Now that we know Forth (you did the exercises, 
+didn't you?), this will help us <i>understand</i> what is happening when we push <Enter>.  
+A secondary bonus - this might make the word at least somewhat portable to other computer 
+architectures.  A goal is to port Reva to the ARM processor (and others).
+
+Even if you are not a machine language coder (yet), the comments for <b>interp</b> are 
+such that it is fairly easy to see what is happening.  Let's begin by converting it to a 
+sort of pseudo-Forth code  based loosely on the assembler labels:
+
+<tt><pre>
+  : interp		( -- )	| a high-level version of Reva's interpreter
+	 query		| get a LINE	( of course, this is not a word in Reva)
+	 repeat		| (the entry point for a flow-control structure)
+	     parsews 0if  nogo interp then	| Parse until we find white space
+	     tokenizer 			        | (find) it, return XT or number, or nothin'
+	     afterok				| compile it for later or do it now			
+	 again ;
+</pre></tt>
+
+Computers have to continuously be doing something, executing some machine code.  They
+may <i>look</i> like they are just waiting for something, but even when apparently paused,
+they are cycling through machine instructions.  In Reva, the computer is often in just
+such a loop: <b>interp</b> spends most of its time waiting for input.
+
+The word <b>interp</b> therefore accounts for much of the Forth user's environment.  Most of what
+is familiar to you from typing in commands at the keyboard is taken care of by <b>interp</b>.
+If you look again at our home-made file, <b>memorymap.txt</b> just prior to the place where 
+we originally saw the human-readable words in the dictionary (<b>syscall</b> or <b>cold</b>), we find 
+a bunch of variables (<b>rp0</b> ... <b>ioerr</b>).  These are all very important state 
+variables used by Forth itself.
+
+<u>Exercises:</u>
+  #  How would you change the <b>prompt</b> in Reva?  For example, can you change it from "ok>" to "yo!" ? Can you change it from "ok>" to "yes, Master?"  Would it be a true reflection of your ability?  Can you likewise change interp's response to an error (e.g. rather than type the nonsense word and a just question mark ( ? ), it might respond "huh?" or "eh?" or "?hm")
+  #  Ask for <b>help</b> for each of the Forth variables (<b>rp0</b> ... <b>ioerr</b>). Note where they are on your <b>memorymap.txt</b>, and where they point to.  Write a word to specially flag them with <b>dump</b>. Which variables are used during our Forth pseudo-code words <b>query</b>, <b>tokenizer</b>, and <b>afterok</b>?
+  #  How much time does Reva spend in <b>interp</b> ?  Can we write a word that will benchmark it while waiting for a user to type a single word?  A line of about 80 characters?  During compilation?
+
+<h2>Inner Workings of Reva's Compiler</h2>
+
+<h3>History lesson</h3>
+When [http://en.wikipedia.org/wiki/Charles_H._Moore|Charles Moore] invented Forth as a programming tool in the late  1960s: 
+
+<blockquote>
+<i>"my goal was simply to make myself a more productive programmer"</i> <br>
+ - (Charles Moore, "[http://www.forth.com/resources/evolution/index.html|The Evolution of FORTH]", quoted in
+ [http://www.colorforth.com/byte.htm|BYTE, Aug. 1980].  
+</blockquote>
+
+Programming <i>languages</i> then 
+(FORTRAN, ALGOL, COBOL, PCL, etc.) were restrictive; programming <i>tools</i> 
+(including assemblers) were primitive or non-existent, and <i>computers themselves</i> 
+were slow, memory-starved, and none had reached the holy 
+grail of being widely used or supported.  FORTH was built incrementally 
+as a generic solution while solving specific programming problems.  On his 
+own, Moore experimented with elements that became intrinsic in Forth: 
+interactive interpreters, stack structures, reverse Polish notation, 
+and dictionary extendability.  
+
+<i>"I hesitate to say it is perfect,"</i> Moore said, giving it away to the world for free; 
+<i>"I will say that if you take anything away from FORTH, it is not FORTH any longer."</i>  
+
+Moore's original software design of FORTH included "indirect threaded 
+code" - <i>"probably deserving of a patent in its own right"</i>.  Forth definitions 
+are compiled as a series of subroutine calls to other definitions; 
+indirect threading meant that he could compile complex programs into less 
+space - even the equivalent machine language code was larger.  Yet despite 
+the small overhead of a few machine cycles for the inner interpreter which 
+pointed the computer to this indirect threaded code, Forth ran extremely 
+fast.  Smaller, faster, interactive, infinitely extensible and free - 
+Forth carved a niche for itself among programmers who saw increases in 
+their own productivity.
+
+<h3>History is a garden of forking paths</h3>  
+If you follow one fork, you see 
+how those other programming <i>languages</i> became more complex and efficient 
+(but none the less restrictive). The programming <i>tools</i> became more complex 
+and efficient (but required a steep learning curve, and the choices are endless, 
+confusing and idiosyncratic).  And <i>computers themselves</i> became faster, memory 
+became cheap, and one even dominated the market becoming a "standard". 
+Unfortunately, as the computers became faster and bigger, their operating 
+systems became more and more difficult to fully comprehend and program.  Now 
+follow a different fork: Moore and some of the first converts to his 
+discovered "way" found Forth itself can be put on silicon, and these Forth 
+microchips can be used in embedded solutions and real-time process control 
+(as well as virtually anything else that can be dreamed) with elegant simplicity.  
+
+Somewhere in the middle of these diverging paths are those Forth users who 
+long for Forth's simplicity and interactivity but still find it useful to 
+communicate to the rest of the world that insists on using these other languages, 
+tools and computer operating systems.   For example, early Forth implementations 
+had no use for files.  Today some Forths (like <i>Reva</i>) essentially say, "Okay, 
+we'll use files.  Let the operating system take care of it, we'll interface with 
+it and just use them."  
+
+With the increase in computer register size and the arrival of inexpensive memory, 
+some Forth implementations have taken a short step away from "indirect threaded 
+code" to "subroutine threaded code".  Like the concession to the use of files, 
+some Forths (like Reva) essentially say, "Okay, the machine already executes 
+instructions serially, so we can let it do the job of the inner interpreter, 
+we'll take advantage of that."  Subroutine threaded Forth compiles a series of 
+machine language subroutine calls.  It was immediately discovered that this took 
+a bit more space, but was faster than indirect threading.  In the Forth tradition 
+of looking to keep it small and fast, it was discovered that some words like <b>+</b> 
+were not even worth spending the machine cycles to compile a subroutine, they 
+could be compiled <i>inline</i> for a size and speed increase.   The option to compile a 
+definition as a <i>macro</i> also saw these inline speed increases (although not necessarily 
+the memory savings).
+
+<i>Reva</i> is subroutine threaded for speed, but it also has available inline and macro
+capabilities.  It also does generalized tail-call elimination, which as Ron explains ''"is supposed 
+to happen whenever the last item before ; resolves to a call."
+''
+Full stop, present day, you at the keyboard with <i>Reva</i> trying to make sense of it 
+all, and the history lesson above makes it clear as mud.  Forget it.  
+
+<h3>Let's play</h3> 
+
+Enter any simple word definition at the keyboard (for example this one, which happens to be Jack Brown's useful recursive Greatest Common Divisor):
+
+<tt>
+ : gcd	( a b -- c) | return the greatest common divisor of 2 numbers on the stack
+     dup if swap over mod gcd else drop then ;
+</tt>
+
+<nowiki>
+Reva words are <i>compiled</i>.  Let's examine what we think we know about that
+so far: We think we know that we turn on the compiler with : (colon). Actually,
+the compiler is "turned on" with ], as we'll see.  The word : creates a new
+entry in the dictionary and then turns on the compiler.  We think we know that
+we turn off the compiler with ; (semi-colon). Actually, [ turns off the
+compiler, ; compiles an exit to the current word via ;; and fixes up some
+dictionary stuff and then turns off the compiler. We think we know that the
+result is a word we have defined in our dictionary that we can add ( compile )
+to other words - but even that is not exactly true, depending on the word we
+define (as we hope to show).  Even if the word is not quite defined yet, (as
+this recursive definition shows) the compiler will compile it.  If we are using
+Reva 6.04 or better, to see precisely what was compiled, try 
+<pre>
+needs debugger
+see gcd
+</pre>
+<nowiki>
+
+This provides us with a disassembly of the word we have created.  You should see something like the following (addresses will likely be different)
+
+<nowiki><pre>
+ ok> see gcd
+ 080547A0  8D 76 FC                    lea esi,[esi-04]
+ 080547A3  89 06                       mov [esi],eax
+ 080547A5  8D 76 FC                    lea esi,[esi-04]
+ 080547A8  89 06                       mov [esi],eax
+ 080547AA  B8 00 00 00 00              mov eax,00000000
+ 080547AF  3B 06                       cmp eax,[esi]
+ 080547B1  AD                          lodsd
+ 080547B2  AD                          lodsd
+ 080547B3  0F 84 1B 00 00 00           jz 080547D4
+ 080547B9  89 C3                       mov ebx,eax
+ 080547BB  8B 06                       mov eax,[esi]
+ 080547BD  90                          nop
+ 080547BE  89 1E                       mov [esi],ebx
+ 080547C0  E8 0B AA FF FF              call 0804F1D0
+ 080547C5  E8 36 B0 FF FF              call 0804F800
+ 080547CA  E8 D1 FF FF FF              call 080547A0
+ 080547CF  E9 07 00 00 00              jmp 080547DB
+ 080547D4  90                          nop
+ 080547D5  90                          nop
+ 080547D6  8B 06                       mov eax,[esi]
+ 080547D8  8D 76 04                    lea esi,[esi+04]
+ 080547DB  90                          nop
+ 080547DC  90                          nop
+</pre></nowiki>
+
+<h3> <b>:</b> (Colon)</h3>
+
+<b>:</b> (Colon) creates a dictionary header and updates the <b>last</b> pointer.  It then turns on the compiler and when it encounters a word, it compiles it (rather than executing it).  It is kind of like a train, laying down track in front of itself as it runs.  The first word it encounters in our definition above is <b>dup</b>.  Let's look at it:
+
+<tt> see dup</tt>
+
+This is the result:
+
+<nowiki><pre>
+ ok> see dup
+ 0804EDC0  8D 76 FC                    lea esi,[esi-04]
+ 0804EDC3  89 06                       mov [esi],eax
+</pre></nowiki>
+
+<h3>Stack Info</h3>
+
+The register <b>esi</b> is our data stack pointer, and <b>eax</b> is the top of the stack (it's implemented not in memory, but in the register itself for speed).   We can think of <b><nowiki>[esi]</nowiki></b> as the stack's <i>second</i> item. It is <i>assumed</i> that there is room enough on our stack to add one more item 1 cell (4 bytes) big; no error checking is done, that would just slow us down.  
+
+  *  Exercise: Just for FUN, try this: write a recursive word containing <b>dup</b> that counts out how many times it runs,  and duplicates the top of stack before it crashes!  How big is that data stack, anyway?  Now you know.  Consider how you might implement some stack overflow error checking.  Hint: you might use <b>sp</b> <b>catch</b> and <b>throw</b> .
+
+
+When the machine performs a <b>dup</b>, it simply changes the pointer to the new location (the stack grows downwards) and then moves what is on the top of the stack into that new position.  But Reva doesn't jump to or call to this code for <b>dup</b> : it compiles it directly into our new definition <b>gcd</b>.  It is, after all, only 2 assembler lines long (or 5 machine code bytes).  The overhead in jumping or calling such a tiny bit of code and then returning would take longer than the code itself.  <b>dup</b> is therefore defined as a special kind of word, what Reva calls an <b>inline</b> word.
+
+We find dup in the src/base.f file, defined this way: 
+<nowiki><pre>
+  : dup [ $89fc768d , 6 1, ;
+</pre></nowiki>
+
+  *  Exercise: We see what <b>dup</b> compiles; what do the other words in <b>gcd</b> actually compile (eg. what does <b>if</b> compile?  What does <b>swap</b> compile? What about <b>over mod gcd else drop then ;</b>?
+
+<h3><nowiki> <b>[</b> (left-bracket) and <b>]</b> (right-bracket)</nowiki></h3>
+<nowiki>
+The terse definition of <b>dup</b> above contains an interesting word, <b>[</b> (left-bracket), a left <i>square</i> bracket.  This turns off the compiler so that we are then back in the interpreter.  When <b>dup</b> was defined, <b>[</b> relied on the interpreter to lay down the 5 bytes, hex 8D 76 FC 89 06.  Later uses of <b>dup</b> rely on the compiler to lay down those same 5 bytes in other definitions.
+
+As you can imagine, there is a way to turn the compiler back on in the middle of a definition, too.  It is <b>]</b> (right-bracket), a right <i>square</i> bracket.  (In practice, I found I had trouble remembering which one of these brackets means 'compiler on' and which one means 'compiler off'.  Other than asking for <b>help</b>  - always the best way when in doubt - the only other suggestion I can give is the <b>[</b> is going in the same direction as a 'c' and the 'f's' in 'off'.  Think: compiler off=<b>[</b>ompiler <b>of[</b>)  The definition of <b>:</b> is something like this in pseudoforth code
+<pre>
+ : : header ] ;
+</pre>
+
+</nowiki>
+  *  Exercise: Enter the definition above for <b>:</b> (colon).  Now try to use it the same as the old colon.  What worked?  What didn't?
+
+<nowiki>
+If you look at the source code for <b>]</b> you find that it does but one thing: it sets a global variable for Forth, called in the source code <b>is_compiling</b>.  There is no Reva-approved way of accessing this global variable to <i>set</i> it, other than using <b>]</b> (which turns it on, or sets it to 1) or <b>[</b> (which turns it off, or sets it to 0).  And there is no Reva-standard way of <i>getting</i> this global variable, other than using <b>compiling?</b>.  When we want to create a word that has a different action based on whether it is being interpreted or compiled, <b>compiling?</b> returns the state we are in.
+</nowiki>
+
+<h3><b>;</b> and other <b>macro</b> words</h3>
+
+
+Enquiring minds may have looked at the definition of <b>dup</b> above and asked, 'Why didn't we have to turn the compiler back on before we ended the definition of <b>dup</b>?'
+
+The answer is, <b>;</b> (semi-colon) is a special class of word, that works immediately.  Reva calls this kind of word a <b>macro</b>, which might be confusing to some who are coming from other forths, or who are familiar with c or assembler.  ANSI calls such words <b>immediate</b> words.  But the word <b>macro</b> precedes the definition of a macro word, and specifies the <i>class</i> of the word that is going to be built; the ANSI word <b>immediate</b> works on the definition of word that was just recently built, and describes its behaviour.  Assemblers use the term 'macro' when they are discussing a way to simplify the definition of a complex series of machine code.  If we were to use a definition that general, we might say all of forth is a macro assembler.  In Reva, however, the word <b>macro</b> is very specific.  You can think of an assembler figuring out the actual code result from a macro instruction during the <i>preprocessor</i> stage of its assembly; similarly Reva's <b>macro</b> works in the preprocessor or interpreter mode, even if the compiler is turned on.  
+
+Obviously, some words will need this capability.  Think about it: when we encounter <b>;</b> (semi-colon) it has to work right away or else the compiler would just compile it into the word we are building!  Our train would run right off the rails!  Furthermore, <b>;</b> works whether we are in interpreter or compile mode.   
+
+Try this (with no colon, just in interpreter mode)
+
+ here .x ; here .x
+
+You have just proved that you <i>can</i> use <b>;</b> without a preceeding <b>:</b> - it just lays down byte $C3 (assembler <b>ret</b>) and moves <b>here</b> forward by one.  We don't see the <b>ret</b> in the disassembly of <b>gcd</b> above because that was the cue for the disassembler to stop disassembling or seeing the word.
+
+<nowiki>
+For the same reason that <b>;</b>(semi-colon) has to work immediately, <b>]</b> and <b>[</b> must be <b>macro</b> words too.
+We might like to know which other words are macro (and which ones are inline).  
+</nowiki>
+
+# Exercise: Define a word (based on <b>words</b>) that displays only <b>macro</b> words.  Define a similar word that displays only <b>inline</b> words.  Add a word that displays only <b>forth</b> words.  And one that displays only <b>variable</b>, and one that displays <b>constant</b> words.  Can you think of a single word that would accomplish all of these things at once?
+
+Macros work right away in colon definitions, but they (probably) have an action in interpreter mode too.  Try this:
+
+<nowiki><pre>
+ .s ] " I see what you're saying " [ .s
+ here 20 - 20 dump
+</pre></nowiki>
+
+<b> " </b> (Double-quote) compiles a string and returns an address and a count, when we are interpreting.  When we're compiling, though, it just lays the string down.  One nice thing about turning off the compiler in the middle of a definition is that you can do some preprocessing in the interpreter mode, and then just compile the result.  You can make a loop branch marker doing this, for example.
+
+  *  Exercise: create a word that can examine part of itself.  (This might be useful, for example, if we are trying out some inline assembler code and want to <b>see</b> it before we actually run it.)
+
+<h3>headerless definitions</h3>
+
+We can make <i>definitionless headers</i> with <b>header</b>.  (Oh, go ahead and try it! If you can't break it, you don't own it.)
+
+<pre>
+ header crash
+ crash
+</pre>
+
+This brings us to <i>headerless definitions</i> (which are probably more useful).  There may be times when we want to compile something but we won't ever need to access that code from our dictionary ever again.  We don't need, therefore, to clutter up our dictionary with these one-use only words.  We saw one such technique early on in this tutorial when we examined the definition of <b>dump</b>.  That method used <b>loc</b> and <b>reveal</b>.  Another way is to use <b>::</b> to turn on the compiler - and create a new word without a dictionary entry.  The difference between <b>]</b> and <b>::</b> is <b>::</b> leaves the xt or execution address of our (headerless) defined word on the stack.  We'll have to deal with it - put it in a variable or make a deferred word with it, because <b>;;</b> won't do it for us.
+
+<nowiki>
+You can have endless fun extending the compiler by playing with <b>::</b> , <b>;;</b> , <b>[</b> , and <b>]</b> but eventually you'll want to do something really fulfilling that will require you to compile one of those <b>macro</b> words.  And as we now know, compiling a <b>macro</b> word is impossible because it wants to act immediately.  Of course, there is a way to do it.
+</nowiki>
+
+(TO DO: we welcome additional tutorials in this vein)
+
+<h2 id='answers'>Answers to Exercises</h2>
+
+<u>Answers:</u>
+1. Here is one way to do it.
+<tt>
+<pre>
+| .dict.f	- prints out the dictionary entry's structural elements
+|		( a -- a' ,returns next link, or flag 0)
+| 		for ways to extend it, see map.f in examples directory
+| bugs: size field needs a fix for versions >6.0.2
+
+: .addr	 ( a -- )
+	cr dup .x ;
+: .cvalue ( a -- )
+        ." value: " c@ . ;
+: .?cvalue ( a --) | prints size if <255, otherwise warns
+        dup c@ if .cvalue else . ." >255 bytes" then ;
+: .value  ( a -- )
+	." value: " @ .x  ;
+: .dict	( a -- a')
+	00;  ( -- 0)
+	cr ." dictionary entry:" cr
+	dup >class  .addr ." word_class "  .value
+	dup .addr ." link_to_previous_entry "  .value
+	dup >xt .addr ." address_of_code "  .value
+	dup >size .addr ." size_of_word "  .?cvalue
+	dup >name .addr ." length_of_name " .cvalue
+	dup >name .addr ." 'name_of_word' " count type
+	@  ( -- a')	;
+
+." try: last @ .dict" cr
+</pre></tt>
+
+<u>Answers:</u>
+2. Here is one way to do it.
+<tt>
+<pre>
+| xt&gt;name
+|
+| a reverse lookup
+| Given any computer address of executable code,
+| return the name of the Forth word that will compile it or run it (if any).
+
+variable &gt;link			| points to our dictionary searches
+: reset-link	( -- )	| must be initialized with the top of dictionary
+	last @ &gt;link ! ;
+
+: an.xt?	( a -- true|false) | returns true if found the xt in dictionary
+	 &gt;xt @ =  ;
+
+: .current-name		( -- )	| prints the current dictionary name 
+	&gt;link @ &gt;name count type ;
+
+: update-link		| updates link pointer to next dictionary structure
+	&gt;link @ @ &gt;link ! ;
+
+defer matchmsg	( -- )			| what to print if there is a match
+: (explain)	." matches: " ;
+' (explain) is matchmsg
+
+
+false variable, found 			| turns on when we found a match
+: ?found	( f -- ) 			| set found to on, or not
+	if matchmsg .current-name  
+		&gt;link off 	| no sense in searching anymore,
+		found on 	| 	 we found a match	
+	else update-link	| search somewhere else
+	then ;
+
+defer warnmsg	( -- )		| what to print if there isn't a match
+: (warn) ." no matches" cr ;		| default message
+' (warn) is warnmsg
+
+: warn	( -- ) 		| prints warning if link=0 ( but not found)
+	&gt;link @ 0 = 
+	found @ not and 
+	if 
+		warnmsg 
+	then ;	
+
+: xt>name	( a --  ) | prints name given the address of xt 
+	reset-link
+	found off
+	repeat	
+		&gt;link @ 0;	| don't play if passed a zero
+		over swap
+		an.xt?
+		?found 
+		&gt;link @ 	
+	while
+	warn drop		| warns if we looked everywhere and found nothin'
+;
+
+reset-link		| set these variables at runtime for debugging
+found off
+' (warn) is warnmsg	| change warnmsg to suit your purposes (eg. Example 3)
+' (explain) is matchmsg	| change matchmsg to suit your purposes
+
+." try:  ' syscall xt&gt;name  " cr
+</pre></tt>
+
+<u>Answers:</u>
+3. Here is one way to do it:
+<tt><pre>
+| 
+| newdump.f	- a dump that shows where the executables are
+|		
+
+include xt-to-name.f ( see Exercise 2 )
+
+: (--) noop ;		| default message: print no warning
+' (--) is warnmsg
+
+: (-)	space  later space  ;	| with name, print a space before ( and after ?)
+' (-) is matchmsg
+
+: ?xt	( a ax n -- a ax n)	| prints name if finds an executable at a
+	rot dup >r -rot r>	( -- a)		| address is 3rd one down; save it for others
+	dup 16 - 	( -- a a')	| check back
+	do i   xt>name 
+	loop 
+;
+
+create dump$ 17 allot    | space for 16 characters
+
+: dumpasc ( a n a -- )	| hope springs eternal: all we have to do is include our ?xt in this word
+    dump$ count dup 0if 2drop else
+        16 over - 3 * spaces type 
+    then  ?xt cr dump$ off ;
+: ?nl ( a n -- )
+	dup 0; 16 mod not 0; 
+    drop over dumpasc .x ;
+: >printable ( c -- c')
+	dup 32 127 between not if drop '. then ;
+: dump ( a n -- )
+	0; dump$ off 
+    over .x 0 do | iterate for each line:
+        i ?nl drop dup c@ dup >printable dump$ c+place .2x space 1+
+    loop drop dumpasc ;
+
+." Try ' syscall $60 dump " cr
+</pre></tt> 
+
+<u>Answers:</u>
+4. Here is one way to do it:
+ Yourself!
+

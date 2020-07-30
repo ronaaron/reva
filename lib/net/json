@@ -1,0 +1,239 @@
+| JSON parser (see here: http://json.org/ for syntax and more info)
+| vim: ft=reva: 
+
+push~
+
+needs string/misc
+needs string/trim
+
+context: ~json
+~json
+
+THROW: THROW_JSON_PARSE
+
+defer parse
+
+| JSON types:
+0 constant JSON_NULL
+1 constant JSON_STRING
+2 constant JSON_BOOL
+3 constant JSON_NUMBER
+4 constant JSON_ARRAY
+5 constant JSON_OBJECT
+6 constant JSON_MAX
+
+: jvalNULL 1 cells allocate dup off ;
+: jvalSTRING 
+	2 cells allocate JSON_STRING over !
+	dup cell+ off ;		| default to no string (null!)
+: jvalBOOL jvalSTRING JSON_BOOL over !  ; | default to 'false'
+: jvalNUMBER jvalSTRING JSON_NUMBER over ! ; | store number as text string
+: jvalARRAY 
+	| +00 == JSON_ARRAY
+	| +04 == max-dim
+	| +08 == pointer to data; each element is a JSONVal
+	3 cells allocate >r
+	JSON_ARRAY r@ !
+	64 dup r@ cell+ !
+	cells allocate 
+	dup 64 cells zero
+	r@ 2cell+ !
+	r>
+	;
+
+| give address of item 'n' in the jsonARRAY jval
+: jval[] ( n jval -- a ) 2cell+ @ swap cells + ;
+
+| traverses the *list*, so point it 
+: ?jval{} ( a n jlist -- a | 0 )
+	@ dup 0if
+		-rot 2drop
+	;then
+	dup >r
+	cell+ @				| a n jval.key
+	lcount 2over cmp 0if
+		2drop r>
+	;then 
+	r> ?jval{} ;
+| give address of item keyed by (a,n) in the jsonOBJECT jval
+| will create a new (a,n,v) triple to hold the data if necessary
+| and hook it into the existing chain, as necessary
+: jval{} ( a n jval -- b )
+	| save key just in case:
+	 >r 2dup r>
+	| prepare to find the item
+	dup >r cell+ ?jval{}
+	| we found the item or we did not:
+	?dup 0if
+		| a n r:jval
+		strdupl		| an  r:jval
+		| key not found, allocate new item:
+		3 cells allocate
+		dup 3 cells zero
+		| an b
+		swap over cell+ !
+		| b 
+		| now, fix up b's 'next'
+		r@ cell+ @ over !
+		dup r> cell+ ! 
+	else
+		| key was found, get rid of item on rstack
+		rdrop
+		| and the saved (a,n)
+		-rot 2drop
+	then
+	;
+: jvalOBJECT 
+	| +00 == JSON_OBJECT
+	| +04 == ptr to (next,key,val) triple (NULL if no next item)
+	2 cells allocate >r
+	JSON_OBJECT r@ !
+	r@ cell+ off
+	r>
+	;
+
+variable printed
+: .jval$ ( a -- ) 0; '" emit lcount type  '" emit ;
+: .jval ( jval -- )
+	0;
+	lcount			| jval' type
+	case
+		JSON_NULL of drop ." null" endof
+		JSON_STRING of @  .jval$ endof
+		JSON_BOOL of @ if ." true" else ." false" then endof
+		JSON_NUMBER of @ lcount type endof
+		JSON_ARRAY of '[ emit
+			0 swap
+			dup cell- swap @ 0do
+				| x jval
+				i over jval[] @ 
+					| x jval jv2
+					?dup if 
+						rot dup if ', emit then
+						1+ -rot
+						.jval
+					then
+			loop
+			2drop
+			'] emit endof
+		JSON_OBJECT of '{ emit
+			0 swap
+			repeat
+				| see if there is anything to print:
+				@ dup if
+					over if ', emit then _1+
+					| yes, so print it
+					dup dup cell+ @ .jval$
+					': emit
+					2cell+ @ .jval
+				then
+				dup
+			while
+			2drop
+			'} emit endof
+		| default: 
+			." unknown: " .x
+	endcase
+	;
+
+: >jvalSTRING ( a n j -- ) -rot strdupl swap !  ;
+: >jvalBOOL ! ;
+: >jvalARRAY ( j2 n j -- )
+	dup >r @		| j2 n max
+	over <if
+		| reallocate the array ...
+	then
+	r> cell- jval[] !
+	  ;
+: >jvalOBJECT ( j2 a n j -- )
+	cell- jval{} 2cell+ !
+	;
+
+create jval-set
+	' noop ,
+	' >jvalSTRING ,
+	' >jvalBOOL ,
+	' >jvalSTRING ,
+	' >jvalARRAY ,
+	' >jvalOBJECT ,
+
+| Set value of jval.  Specific value set depends on jval type
+: >jval ( value ... j -- )
+	lcount JSON_MAX clamp cells jval-set + @execute ;
+	
+| Set key (a,n) to value (j2) in the jval (object) j
+: >jval{} ( j2 a n j -- ) 
+	;
+
+create jval-alloc
+	' jvalNULL ,
+	' jvalSTRING ,
+	' jvalBOOL ,
+	' jvalNUMBER ,
+	' jvalARRAY ,
+	' jvalOBJECT ,
+
+| dynamically allocates a new JSONvalue of the mentioned 'type'
+: jval ( JSONtype -- jval )
+	JSON_MAX clamp
+	cells jval-alloc + @execute ;
+
+
+| valid items begin with:
+|   '{'  -- object  { "key" : value, "key2" : value2, ...}
+|   '['  -- array   [ value, value2, ... ]
+|   '"'  -- string  "text"
+|   [-0-9] -- number -0.4e3
+|   true|false|null -- special values
+
+: can-parse? ( a n m -- a n | THROW_JSON_PARSE )
+	over <if THROW_JSON_PARSE then
+	2dup + c@ lc dup 'a 'z between if THROW_JSON_PARSE then
+		'0 '9 between if THROW_JSON_PARSE then
+	;
+
+: parse-null ( a n -- jval )
+	." null " 2dup type cr
+	| must be at least 4 characters:
+	4 can-parse?
+	2dup " null" cmp if THROW_JSON_PARSE then
+	4 /string
+	JSON_NULL >jval
+	;
+: parse-string ( a n -- jval )
+	." string " 2dup type cr
+	;
+: parse-false ( a n -- jval )
+	." false " 2dup type cr
+	;
+: parse-true ( a n -- jval )
+	." true " 2dup type cr
+	;
+: parse-number ( a n -- jval )
+	." number "  cr
+	case
+		't of parse-true endof
+		'f of parse-false endof
+		'n of parse-null endof
+		| not a special case
+	endcase
+	;
+: parse-object ( a n -- jval )
+	." object " 2dup type cr
+	;
+: parse-array  ( a n -- jval )
+	." array " 2dup type cr
+	;
+:: ( a n -- jval )
+	ltrim
+	over c@ case
+		'" of parse-string endof		| a string
+		'{ of parse-object endof		| an object
+		'[ of parse-array endof		| an array
+		parse-number
+	endcase
+	; is parse
+pop~
+
+|||
+

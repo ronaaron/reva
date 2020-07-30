@@ -1,0 +1,192 @@
+| vim: ft=reva :
+| Launch an external program from Reva.
+| Exports: 
+|    shell ( a n -- result )
+|    !! ( <cmd> -- result) 
+
+push~ 
+~
+needs string/trim
+needs os/tempfile
+~strings
+~priv
+~util
+~
+~os
+
+variable shell_code
+LIN MAC or [IF]
+1 func: system 
+2 func: execvp
+
+: doexec ( argv -- ) dup @ swap execvp ;
+:: system ;
+[ELSE]
+create execpad 256 allot
+create si 18 cells allot
+	si 0 18 cells fill
+	18 cells si !
+create pi 4 cells allot
+k32 drop 
+10 func: CreateProcessA as (os_system)
+2 func: WaitForSingleObject 
+2 func: GetExitCodeProcess 
+:: 
+	" cmd /c " execpad place zcount execpad +place
+	0
+	execpad 1+ | lpCommandLine
+	0 0 0  | lpProcAtt lpThreadAtt bInherit
+	| dwCreation
+	$00000020 | NORMAL
+	| lpEnv
+	0
+	| lpCurDir
+	0
+	| lpStartup
+	si
+	| lpProcInfo
+	pi
+	(os_system)
+	if 
+		pi @ -1 WaitForSingleObject -1 =if
+			drop
+			-1
+		else
+			pi @ here GetExitCodeProcess drop here @
+		then
+	else
+	  false
+	then
+;
+[THEN]
+: shell ( a n -- ) zt literal execute shell_code ! ;
+: (shellexec) >r
+	r@ +lplace
+	r@ lcount shell
+	r@ lcount type cr
+	r> free
+	;
+LIN MAC or [IF]
+: shellident " uname" | drop through
+: shellexec ( a n -- )
+	dup 20 + allocate dup >r
+	" xdg-open " rot lplace
+	r> (shellexec)
+	;
+[ELSE]
+: shellident " msyscon" getenv nip 0if " msys" ;then " command" ;
+: shellexec ( a n -- )
+	dup 20 + allocate dup >r
+	" cmd /c start " rot lplace
+	r> (shellexec)
+	;
+[THEN]
+: shell$ ( a n -- a n )
+	" > " strcat over >r		| a' n' (remember to free it)
+	tempfilename 2swap 2over	| a n a' n' a n
+	strcat r> free over >r		| a n a'' n'' (remember to free r>)
+	shell
+	2dup slurp					| a n a' n'
+	r> free
+	2swap delete ;
+: !! 10 parse trim shell ;
+~priv variable tmp-argv exit~
+: argv> depth tmp-argv ! ;
+: >argv ( z1 z2 z3 -- a )
+	depth tmp-argv @ -				| number of parameters 
+	dup 1+ cells allocate			| n a
+	2dup swap 1+ cells + off
+	tmp-argv !
+	0do
+		remains cells tmp-argv @ + !
+	loop
+	tmp-argv @
+	;
+
+pop~
+||| 
+
+def: shell
+stack: a n -- 
+ctx: ~os
+desc: =
+	Pass the string (a,n) to the system to execute as an external command.  The
+	os-dependent return code is put in "shell_code"
+=
+def: shell$
+stack: a n --  a n
+ctx: ~os
+desc: =
+	Pass the string (a,n) to the system to execute as an external command.  The
+	os-dependent return code is put in "shell_code", and the output from the
+	command is returned in an allocated string (use 'free' on the string data).
+=
+def: !!
+stack: <line> -- 
+ctx: ~os
+desc: =
+	Passes the entire line following it to the system to execute as an external
+	command.  The os-dependent return code is put in "shell_code"
+=
+def: shell_code
+stack:  -- a
+ctx: ~os
+desc: =
+	Variable containing the value of the os-dependent return code from "shell"
+	or "!!"
+=
+def: argv>
+stack:  -- 
+ctx: ~os
+ver: 9.0.9
+desc: =
+	Begins the creation of an 'argv' list.  End the creation with '>argv'
+=
+def: >argv
+stack:  -- a
+ctx: ~os
+ver: 9.0.9
+desc: =
+	Ends the creation of an 'argv' list.  The returned address is an allocated
+	array of cells, each one containing an item which was on the stack after the
+	'argv>' word.  The array is terminated with a zero cell.
+
+	This is used to pass, for example, to 'doexec' (on Linux and Mac), which
+	expects and argv[] type array of parameters.
+
+	Example:
+
+		argv>
+			z" ls"
+			z" -lrt"
+		>argv doexec
+=
+def: doexec
+stack:  argv -- 
+ctx: ~os
+ver: 9.0.9
+desc: =
+	Linux and Mac OS/X only.
+
+	This calls 'execvp', using the argv given it.  The first element in the argv
+	array is the name of the program to exec, subsequent items are parameters to
+	the program.
+=
+
+def: shellexec
+stack: a n --
+ctx: ~os
+ver: 2011.1
+desc: =
+	Use the "default application" to run the program (a,n).  This could be a
+	file or an application.
+	
+	Example: 
+	
+		" some.html" shellexe
+
+	will launch the user's default HTML browser on "some.html"
+=
+
+related: shell !! shell_code shell$ doexec
+related: argv> >argv  doexec

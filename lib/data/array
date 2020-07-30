@@ -1,0 +1,64 @@
+| vim: ft=reva :
+| Dynamically allocated, fixed-size array.
+
+push~
+needs data/base
+
+~
+~data 
+~datapriv
+: array# ( a -- m ) dataspace cell+ @ ;
+
+: (array) ( a n -- a' m )
+	swap dataspace swap			| d n
+	over 2cell+ @ 1- clamp		| ensure index is in range
+	over cell+ @ dup >r *
+	swap @ + r>
+	;
+
+~data
+: array@ ( a n -- b m ) (array)  ;
+: array! ( a n b -- ) -rot (array)  move ;
+
+~datapriv
+: (destroy) ( d -- )
+	dup dataspace @ free free
+	;
+: (iterate) ( xt d -- ) 
+	dup dataspace 2cell+ @ 0do
+		| xt d
+		dup i array@
+		| xt d b m
+		fourth execute
+		0if leave then
+	loop
+	2drop
+	;
+
+~data
+
+| An array needs to keep track of its current size, as
+| well as the data items' size:
+|
+| dataspace +
+|	00	allocated space for the array
+|	04	item-size
+|	08  current-size
+
+| n is number of items; m is item size
+: array ( n m -- a )
+	2dup * dup allocate		| n m x a
+	swap over				| n m a x a
+	swap zero					| n m a
+	3 cells new-data dup >r	| n m a o  r:o
+	dataspace swap over !	| n m d
+	swap over cell+ !		| n d
+	2cell+ !
+	r>
+	['] (destroy) over >destroy
+	['] (iterate) over >iterate
+	;
+
+pop~
+
+|||
